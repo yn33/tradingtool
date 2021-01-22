@@ -19,7 +19,7 @@ class Trader:
     
     def tryEnter(self, trade):
         result = self.php.enter(trade.asset.tag, trade.stop, trade.buyVolume)
-        if(result):
+        if result:
             Logs.logTrade(trade, datetime.datetime.now)
     
     def processTrade(self):
@@ -35,9 +35,17 @@ class Trader:
             analytics = info[8]
             processResult = asset.processTrade(trade)
             if processResult != None:
-                formatted = Logs.formatData[asset.tag, time, trade.entry, processResult[0], 
-                trade.goal, processResult[1], trade.risk, analytics]
-                Logs.log(formatted)
+                if processResult. == False:
+                    formatted = Logs.formatData[asset.tag, time, trade.entry, trade.stop, 
+                    trade.goal, trade.currR, trade.risk, analytics]
+                    Logs.log(formatted)
+                if processResult == True:
+                    tryRaise(trade, time)
+
+    def tryRaise(self, trade, time):
+        result = self.php.raiseStop(trade.asset, trade.stop, trade.buyVolume)
+        if result:
+            Logs.logTrade(trade, time)
             
 
 
@@ -72,25 +80,30 @@ class Asset:
                     return trade
         return None
 
-    def processTrade(self, trade, time):
+    def processTrade(self, trade):
         bars = Bars(self.php.getOHLC(self.tag, self.interval))
         currBar = bars.barAtIndex(bars.count - 1)
         currHigh = currBar.high
         currClose = currBar.close
-        currR = (currClose - trade.entry)/trade.risk
+        trade.currR = (currClose - trade.entry)/trade.risk
+        goal = trade.goal
         print(self.tag.upper() + "\n")
         print("Entry: {}\n".format(trade.entry))
         print("Stop: {}\n".format(trade.stop))
-        print("Goal: {}\n").format(trade.goal))
+        print("Goal: {}\n").format(goal))
         print("Current price: {}\n".format(currClose))
         print("Current high: {}\n".format(currClose))
         print("R: {}\n".format(trade.risk))
         print("Current R: {}\n".format(currR))
         if currClose <= trade.stop and currClose != 0.0:
             originalStop = trade.entry - trade.risk
-            return [originalStop, currR]
-        elif currClose > goal
-            #implement new stop loss
+            trade.stop = originalStop
+            return False
+        elif currClose > trade.goal
+            newGoal = trade.goal + trade.risk
+            trade.goal = newGoal
+            trade.stop = goal
+            return True
 
 
 class Bar:
@@ -256,6 +269,7 @@ class Trade:
     buyVolume = 0
     cost = 0
     asset = None
+    currR = 0
     wData = []
     
     def calculateRisk(self):

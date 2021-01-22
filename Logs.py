@@ -6,16 +6,14 @@ class Logs:
     lpath = Constants.LOG_PATH
 
     def logTrade(self, trade, time):
-        risk = trade.risk
-        goal = trade.calculateGoal
         f = open(dpath, "w")
         f.write("{}\n".format(trade.asset.tag))
         f.write("{}\n".format(trade.asset.interval))
         f.write("{}\n".format(time))
         f.write("{}\n".format(trade.entry))
         f.write("{}\n".format(trade.stop))
-        f.write("{}\n".format(goal))
-        f.write("{}\n".format(risk))
+        f.write("{}\n".format(trade.goal))
+        f.write("{}\n".format(trade.risk))
         f.write("{}\n".format(trade.buyVolume))
         f.write("{}\n".format(self.formatData(Constants.getArray() + trade.wData)))
         f.close()

@@ -14,16 +14,33 @@ class PHP:
         return array
     
     def enter(self, asset, stop, buyVolume):
-        if(TEST_MODE):
+        if TEST_MODE:
             return True
         else:
-            output = subprocess.run([Constants.PHP_PATH, Constants.KRAKEN_PATH, str(asset), 'enter', str(stop), str(buyVolume)], capture_output=True, text=True).stdout
+            output = subprocess.run([Constants.PHP_PATH, Constants.KRAKEN_PATH, str(asset.tag), 'enter', str(stop), str(buyVolume)], capture_output=True, text=True).stdout
             result = json.loads(output).split()
             if result[0] == "OK":
                 return True
             if result[0] == "ERR":
                 strings = result[0].strip("\n").split()
                 string = strings[1]
-                Logs("log.txt").log(string)
+                Logs().log(string)
                 return False
             print("Error with JSON-output at PHP-enter\n")
+            Logs().log("Error with JSON-output at PHP-enter")
+    
+    def raiseStop(self, asset, stop, sellVolume):
+        if TEST_MODE:
+            return True
+        else:
+            output = subprocess.run([Constants.PHP_PATH, Constants.KRAKEN_PATH, str(asset.tag), 'goal', str(stop), str(sellVolume)], capture_output=True, text=True).stdout
+            result = json.loads(output).split()
+            if result[0] == "OK":
+                return True
+            if result[0] == "ERR":
+                strings = result[0].strip("\n").split()
+                string = strings[1]
+                Logs().log(string)
+                return False
+            print("Error with JSON-output at PHP-raiseStop\n")
+            Logs().log("Error with JSON-output at PHP-raiseStop")
