@@ -1,24 +1,25 @@
-class Constants:
-    def __init__(self):
-        self.VOLUME_LEVEL = 2.0
-        self.CHANGE_LEVEL = 2.0
-        self.SCORE_LEVEL = 8.0
-        self.AMOUNT_OF_BARS = 6.0
-        self.CHUNK_SIZE = 10
-        self.PIVOT_LEVEL = 1.0
-        self.PIVOT_DIST_BAR_LENGTHS = 1.0
-        self.CHANGE_SCALE = 2.0
-        self.VOLUME_SCALE = 2.0
-        self.SUPPORT_SCALE = 1.0
-        self.RESISTANCE_SCALE = 1.0
-        self.STOP = 0.3
-        self.COST_HIGH = 36
-        self.COST_LOW = 33
+from Logs import Logs
 
-        self.DATA_PATH = "data.txt"
-        self.LOG_PATH = "log.txt"
-        self.PHP_PATH = "C:/PHP/php"
-        self.KRAKEN_PATH = "C:/kraken-api-client-master/php/kraken.php"
+class Constants:
+    
+    def __init__(self, path):
+
+        array = Logs().readConstants(path)
+
+        self.VOLUME_LEVEL = float(array[0])
+        self.CHANGE_LEVEL = float(array[1])
+        self.SCORE_LEVEL = float(array[2])
+        self.AMOUNT_OF_BARS = float(array[3])
+        self.CHUNK_SIZE = int(array[4])
+        self.PIVOT_LEVEL = float(array[5])
+        self.PIVOT_DIST_BAR_LENGTHS = float(array[6])
+        self.CHANGE_SCALE = float(array[7]) 
+        self.VOLUME_SCALE = float(array[8])
+        self.SUPPORT_SCALE = float(array[9])
+        self.RESISTANCE_SCALE = float(array[10])
+        self.STOP = float(array[11])
+        self.COST_HIGH = float(array[12])
+        self.COST_LOW = float(array[13])
     
     def getArray(self):
         array = [self.VOLUME_LEVEL, self.CHANGE_LEVEL, self.SCORE_LEVEL,
@@ -27,3 +28,14 @@ class Constants:
                 self.SUPPORT_SCALE, self.RESISTANCE_SCALE, self.STOP, self.COST_HIGH,
                 self.COST_LOW]
         return array
+
+class Paths:
+
+    def __init__(self, path):
+
+        paths = Logs().readConstants(path)
+        
+        self.DATA_PATH = paths[1]
+        self.LOG_PATH = paths[2]
+        self.PHP_PATH = paths[3]
+        self.KRAKEN_PATH = paths[4]

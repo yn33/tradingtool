@@ -8,8 +8,8 @@ class PHP:
 
     TEST_MODE = False
 
-    def getOHLC(self, asset, interval):
-        output = subprocess.run([Constants.PHP_PATH, Constants.KRAKEN_PATH, str(asset), str(interval)], capture_output=True, text=True).stdout
+    def getOHLC(self, asset):
+        output = subprocess.run([Constants.PHP_PATH, Constants.KRAKEN_PATH, str(asset.tag), str(asset.interval)], capture_output=True, text=True).stdout
         array = json.loads(output)
         return array
     

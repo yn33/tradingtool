@@ -6,154 +6,168 @@ from Logs import Logs
 class Trader:
     php = PHP()
     assets = []
+    logs = Logs()
+    logs.setPaths("/constants/paths")
 
     def addAsset(self, asset):
         self.assets.append(asset)
 
     def scan(self):
         for asset in self.assets:
-            scanResult = asset.scan()
+            scanResult = asset.pattern.scan(asset)
             if scanResult != None:
                 scanResult.asset = asset
-                tryEnter(scanResult)
+                self.tryEnter(scanResult)
     
     def tryEnter(self, trade):
         result = self.php.enter(trade.asset.tag, trade.stop, trade.buyVolume)
         if result:
-            Logs.logTrade(trade, datetime.datetime.now)
+            self.logs.logTrade(trade, datetime.datetime.now)
     
     def processTrade(self):
-            info = Logs.readTrade()
-            trade = Trade()
-            asset = Asset(info[0], info[1], self.php)
-            time = info[2]
-            trade.entry = info[3]
-            trade.stop = info[4]
-            trade.goal = info[5]
-            trade.risk = info[6]
-            trade.buyVolume = info[7]
-            analytics = info[8]
-            processResult = asset.processTrade(trade)
-            if processResult != None:
-                if processResult. == False:
-                    formatted = Logs.formatData[asset.tag, time, trade.entry, trade.stop, 
-                    trade.goal, trade.currR, trade.risk, analytics]
-                    Logs.log(formatted)
-                if processResult == True:
-                    tryRaise(trade, time)
+        info = self.logs.readTrade()
+        trade = Trade()
+        asset = Asset(info[0], info[1], self.php, info[2])
+        time = info[3]
+        trade.entry = info[4]
+        trade.stop = info[5]
+        trade.goal = info[6]
+        trade.risk = info[7]
+        trade.buyVolume = info[8]
+        analytics = info[9]
+        processResult = asset.pattern.processTrade(trade, asset)
+        if processResult != None:
+            if processResult == False:
+                formatted = Logs().formatData([asset.tag, time, trade.entry, trade.stop, 
+                trade.goal, trade.currR, trade.risk, analytics])
+                self.logs.log(formatted)
+            if processResult == True:
+                self.tryRaise(trade, time)
 
     def tryRaise(self, trade, time):
         result = self.php.raiseStop(trade.asset, trade.stop, trade.buyVolume)
         if result:
-            Logs.logTrade(trade, time)
+            self.logs.logTrade(trade, time)
             
-
-
 
 class Asset:
 
-    def __init__(self, tag, interval, php)
+    def __init__(self, tag, pattern, interval, php):
         self.php = PHP()
         self.tag = tag
         self.interval = interval
+        self.pattern = pattern
+        constantsPath = "/contants/{}".format(pattern)
+        self.constants = Constants(constantsPath)
 
-    def scan(self):
-        bars = Bars(self.php.getOHLC(self.tag, self.interval))
-        averageChange = bars.averageChange
+class DipPattern:
+
+    def scan(self, asset):
+        constants = asset.constants
+        bars = Bars(asset.php.getOHLC(asset))
+        averageChange = bars.averageChange()
         lastBar = bars.barAtIndex(bars.count - 2)
         lastBarChange = lastBar.change
-        print(self.tag.upper() + "\n")
-        print("Interval: {}\n".format(self.interval))
+        print(asset.tag.upper() + "\n")
+        print("Interval: {}\n".format(asset.interval))
         print("Average change: {}\n".format(averageChange))
         print("Last bar change: {}\n".format(lastBarChange))
         if lastBarChange < averageChange:
-            points = Points(bars)
-            trade = points.countPoints 
+            points = Points(bars, asset)
+            trade = points.countPoints()
             trade.wData = points.getwData
-            trade.asset = self
+            trade.asset = asset
             risk = trade.calculateRisk
-            if trade.entry >= trade.trigger and risk > 0 and points.score >= Constants.SCORE_LEVEL and points.barScore >= Constants.SCORE_LEVEL/2:
-                buyVolume = trade.calculateBuyVolume
-                cost = trade.calculateCost
+            if trade.entry >= trade.trigger and risk > 0 and points.score >= constants.SCORE_LEVEL and points.barScore >= constants.SCORE_LEVEL/2:
+                trade.calculateBuyVolume()
+                cost = trade.calculateCost()
                 print("Cost: {}\n".format(cost))
-                if cost <= Constants.COST_HIGH and cost >= Constants.COST_LOW:
+                if cost <= constants.COST_HIGH and cost >= constants.COST_LOW:
                     return trade
         return None
 
-    def processTrade(self, trade):
-        bars = Bars(self.php.getOHLC(self.tag, self.interval))
+    def processTrade(self, trade, asset):
+        bars = Bars(asset.php.getOHLC(asset))
         currBar = bars.barAtIndex(bars.count - 1)
         currHigh = currBar.high
         currClose = currBar.close
         trade.currR = (currClose - trade.entry)/trade.risk
-        goal = trade.goal
-        print(self.tag.upper() + "\n")
+        print(asset.tag.upper() + "\n")
         print("Entry: {}\n".format(trade.entry))
         print("Stop: {}\n".format(trade.stop))
-        print("Goal: {}\n").format(goal))
+        print("Goal: {}\n".format(trade.goal))
         print("Current price: {}\n".format(currClose))
-        print("Current high: {}\n".format(currClose))
+        print("Current high: {}\n".format(currHigh))
         print("R: {}\n".format(trade.risk))
-        print("Current R: {}\n".format(currR))
+        print("Current R: {}\n".format(trade.currR))
         if currClose <= trade.stop and currClose != 0.0:
             originalStop = trade.entry - trade.risk
             trade.stop = originalStop
             return False
-        elif currClose > trade.goal
+        elif currClose > trade.goal:
             newGoal = trade.goal + trade.risk
+            oldGoal = trade.goal
             trade.goal = newGoal
-            trade.stop = goal
+            trade.roundGoal(asset.tag)
+            trade.stop = oldGoal
             return True
-
+        return None
 
 class Bar:
     def __init__(self, array):
-        self.time = array[0]
-        self.open = array[1]
-        self.high = array[2]
-        self.low = array[3]
-        self.close = array[4]
-        self.volume = array[6]
-        self.change = self.open - self.close
+        self.time = int(array[0])
+        self.open = float(array[1])
+        self.high = float(array[2])
+        self.low = float(array[3])
+        self.close = float(array[4])
+        self.volume = float(array[6])
+        self.change = self.close - self.open
 
 class Bars:
+
     bars = []
     totalVolume = 0
     totalChange = 0
     count = 0
+    chunks = []
+
     def __init__(self, array):
         for entry in array:
-            bar = Bar(entry)
+            print(str(type(entry)))
+            if str(type(entry)) == """<class 'Trading.Bar'>""":
+                bar = entry
+            else:
+                bar = Bar(entry)
             self.bars.append(bar)
-            totalVolume += bar.volume
+            self.totalVolume += bar.volume
             change = bar.change
             if(change >= 0):
-                totalChange += change
+                self.totalChange += change
             else:
-                totalChange += -change
-            count += 1
+                self.totalChange += -change
+            self.count += 1
         
     def averageVolume(self):
-        return totalVolume/count
+        return self.totalVolume/self.count
 
     def averageChange(self):
-        return totalChange/count
+        return self.totalChange/self.count
 
     def toChunks(self, chunkSize):
         chunks = []
         chunk = []
         i = 0
         j = 0
-        while i < count - chunkSize:
+        while i < self.count - chunkSize:
             bar = self.bars[i]
-            chunk += bar
+            chunk.append(bar)
             if(j == chunkSize):
-                chunks += Bars(chunk)
+                chunks.append(Bars(chunk))
                 j = 0
                 chunk = []
             i += 1
             j += 1
-        return chunks
+        self.chunks = chunks
 
     def lowest(self):
         lowest = self.bars[0]
@@ -162,9 +176,11 @@ class Bars:
                 lowest = bar
         return lowest
 
-    def supports(self, chunks):
+    def supports(self, chunkSize):
+        if len(self.chunks) == 0:
+            self.toChunks(chunkSize)
         lowests = []
-        for chunk in chunks:
+        for chunk in self.chunks:
             lowests += chunk.lowest
         return lowests
     
@@ -175,15 +191,17 @@ class Bars:
                 highest = bar
         return highest
     
-    def resistances(self, chunks):
+    def resistances(self, chunkSize):
+        if len(self.chunks) == 0:
+            self.toChunks(chunkSize)
         highests = []
-        for chunk in chunks:
+        for chunk in self.chunks:
             highests += chunk.highest
         return highests
 
     def barAtIndex(self, index):
         if index <= self.count - 1 and index >= 0:
-            return self.bars(index)
+            return self.bars[index]
         else:
             print("Index error at Bars.barAtIndex\n")
             return None
@@ -209,37 +227,39 @@ class Points:
     supportW = 0
     resistanceW = 0
 
-    def __init__(self, bars):
+    def __init__(self, bars, asset):
         self.bars = bars
+        self.constants = asset.constants
+        self.pattern = asset.pattern
     
     def countPoints(self):
 
-        ongoingBar = self.bars.barAtIndex(count - 1)
+        ongoingBar = self.bars.barAtIndex(self.bars.count - 1)
         trade = Trade()
-        trade.stop = min(ongoingBar.low, self.bar.barAtIndex(count - 2).low) 
+        trade.stop = min(ongoingBar.low, self.bars.barAtIndex(self.bars.count - 2).low) 
         trade.entry = ongoingBar.close
         trade.trigger = ongoingBar.open
 
         i = 2
-        changeLevel = self.bars.averageChange*CHANGE_LEVEL
-        volumeLevel = self.bars.averageVolume*VOLUME_LEVEL
+        changeLevel = self.bars.averageChange()*self.constants.CHANGE_LEVEL
+        volumeLevel = self.bars.averageVolume()*self.constants.VOLUME_LEVEL
 
-        while i < Constants.AMOUNT_OF_BARS + 2:
-            currentBar = self.bars.barAtIndex(count - i)
+        while i < self.constants.AMOUNT_OF_BARS + 2:
+            currentBar = self.bars.barAtIndex(self.bars.count - i)
             if (currentBar.open - currentBar.close) > changeLevel:
-                self.score += 1*Constants.CHANGE_SCALE
-                self.barScore += 1*Constants.CHANGE_SCALE
+                self.score += 1*self.constants.CHANGE_SCALE
+                self.barScore += 1*self.constants.CHANGE_SCALE
                 self.changeW += 1
             if currentBar.volume > volumeLevel and currentBar.open > currentBar.close:
-                self.score += 1*Constants.VOLUME_SCALE
-                self.barScore += 1*Constants.VOLUME_SCALE
+                self.score += 1*self.constants.VOLUME_SCALE
+                self.barScore += 1*self.constants.VOLUME_SCALE
                 self.volumeW += 1
             i += 1
-
-        distance = self.bars.averageChange*Constants.PIVOT_DIST_BAR_LENGTHS
-        self.supportW = countPivots(self.bars.supports, trade.stop, distance)  
-        self.resistanceW = countPivots(self.bars.resistances, trade.stop, distance)
-        self.score += (self.supportW*Constants.SUPPORT_SCALE + self.resistanceW*Constants.RESISTANCE_SCALE)
+        
+        distance = self.bars.averageChange()*self.constants.PIVOT_DIST_BAR_LENGTHS
+        self.supportW = self.bars.countPivots(self.bars.supports(), trade.stop, distance)  
+        self.resistanceW = self.bars.countPivots(self.bars.resistances(), trade.stop, distance)
+        self.score += (self.supportW*self.constants.SUPPORT_SCALE + self.resistanceW*self.constants.RESISTANCE_SCALE)
 
         print("Change bars: {}\n".format(self.changeW))
         print("Volume bars: {}\n".format(self.volumeW))
@@ -278,7 +298,7 @@ class Trade:
     
     def calculateBuyVolume(self):
         if self.risk > 0:
-            self.buyVolume = Constants.STOP/self.risk
+            self.buyVolume = self.asset.constants.STOP/self.risk
         return self.buyVolume
     
     def calculateCost(self):
@@ -289,13 +309,16 @@ class Trade:
     def calculateGoal(self):
         if self.risk > 0 and self.entry > 0:
             self.goal = self.entry + 2*self.risk
-            if self.tag == 'xbt' or tag == 'eth':
-                self.goal = round(self.goal, 1)
-            elif self.tag == 'ltc':
-                self.goal = round(self.goal, 2)
-            elif self.tag == 'xrp' or self.tag == 'link':
-                self.goal == round(self.goal, 5)
+            self.roundGoal(self.asset.tag)
         return self.goal
+
+    def roundGoal(self, tag):
+        if tag == 'xbt' or tag == 'eth':
+            self.goal = round(self.goal, 1)
+        elif tag == 'ltc':
+            self.goal = round(self.goal, 2)
+        elif tag == 'xrp' or tag == 'link':
+            self.goal == round(self.goal, 5)
 
 
 
