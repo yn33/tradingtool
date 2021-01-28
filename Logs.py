@@ -2,14 +2,16 @@ from Constants import Paths
 
 class Logs:
 
+    paths = None
 
-    def setPaths(self, path):
-        paths = Paths(path)
-        self.dpath = paths.DATA_PATH
-        self.lpath = paths.LOG_PATH
+    def setPaths(self, paths):
+        self.paths = paths
 
     def logTrade(self, trade, time):
-        f = open(self.dpath, "w")
+        if self.paths == None:
+            print("No paths set at Logs\n")
+            return None
+        f = open(self.paths.DATA_PATH, "w")
         f.write("{}\n".format(trade.asset.tag))
         f.write("{}\n".format(trade.asset.interval))
         f.write("{}\n".format(trade.asset.pattern))
@@ -30,27 +32,27 @@ class Logs:
         return string
 
     def log(self, string):
-        f = open(self.lpath, "a")
+        if self.paths == None:
+            print("No paths set at Logs\n")
+            return None
+        f = open(self.paths.LOG_PATH, "a")
         f.write("{}\n".format(string))
         f.close()
 
     def clear(self):
-        f = open(self.dpath, "w")
+        if self.paths == None:
+            print("No paths set at Logs\n")
+            return None
+        f = open(self.paths.DATA_PATH, "w")
         f.close()
 
     def readTrade(self):
+        if self.paths == None:
+            print("No paths set at Logs\n")
+            return None
         array = []
-        f = open(self.dpath, "r")
+        f = open(self.paths.DATA_PATH, "r")
         for x in f:
             array.append(x.strip("\n"))
-        f.close()
-        return array
-
-    def readConstants(self, path):
-        array = []
-        f = open(path, "r")
-        for x in f:
-            split = x.split(":")
-            array.append(split[1].strip("\n"))
         f.close()
         return array

@@ -1,23 +1,33 @@
 import subprocess
 import json
 import Trading
-from Constants import Constants
+from Constants import Paths
 from Logs import Logs
 
 class PHP:
 
     TEST_MODE = False
+    paths = None
+    
+    def setPaths(self, paths):
+        self.paths = paths
 
     def getOHLC(self, asset):
-        output = subprocess.run([Constants.PHP_PATH, Constants.KRAKEN_PATH, str(asset.tag), str(asset.interval)], capture_output=True, text=True).stdout
+        if self.paths == None:
+            print("No paths set at PHP")
+            return None
+        output = subprocess.run([self.paths.PHP_PATH, self.paths.KRAKEN_PATH, str(asset.tag), str(asset.interval)], capture_output=True, text=True).stdout
         array = json.loads(output)
         return array
     
     def enter(self, asset, stop, buyVolume):
-        if TEST_MODE:
+        if self.TEST_MODE:
             return True
         else:
-            output = subprocess.run([Constants.PHP_PATH, Constants.KRAKEN_PATH, str(asset.tag), 'enter', str(stop), str(buyVolume)], capture_output=True, text=True).stdout
+            if self.paths == None:
+                print("No paths set at PHP")
+                return None
+            output = subprocess.run([self.paths.PHP_PATH, self.paths.KRAKEN_PATH, str(asset.tag), 'enter', str(stop), str(buyVolume)], capture_output=True, text=True).stdout
             result = json.loads(output).split()
             if result[0] == "OK":
                 return True
@@ -26,14 +36,17 @@ class PHP:
                 string = strings[1]
                 Logs().log(string)
                 return False
-            print("Error with JSON-output at PHP-enter\n")
+            print("Error with JSON-output at PHP-enter")
             Logs().log("Error with JSON-output at PHP-enter")
     
     def raiseStop(self, asset, stop, sellVolume):
-        if TEST_MODE:
+        if self.TEST_MODE:
             return True
         else:
-            output = subprocess.run([Constants.PHP_PATH, Constants.KRAKEN_PATH, str(asset.tag), 'goal', str(stop), str(sellVolume)], capture_output=True, text=True).stdout
+            if self.paths == None:
+                print("No paths set at PHP")
+                return None
+            output = subprocess.run([self.paths.PHP_PATH, self.paths.KRAKEN_PATH, str(asset.tag), 'goal', str(stop), str(sellVolume)], capture_output=True, text=True).stdout
             result = json.loads(output).split()
             if result[0] == "OK":
                 return True
@@ -42,5 +55,5 @@ class PHP:
                 string = strings[1]
                 Logs().log(string)
                 return False
-            print("Error with JSON-output at PHP-raiseStop\n")
+            print("Error with JSON-output at PHP-raiseStop")
             Logs().log("Error with JSON-output at PHP-raiseStop")

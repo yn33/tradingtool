@@ -1,5 +1,6 @@
 from PHP import PHP
 from Constants import Constants
+from Constants import Paths
 import datetime
 from Logs import Logs
 
@@ -7,7 +8,9 @@ class Trader:
     php = PHP()
     assets = []
     logs = Logs()
-    logs.setPaths("/constants/paths")
+    paths = Paths("constants/paths.txt")
+    logs.setPaths(paths)
+    php.setPaths(paths)
 
     def addAsset(self, asset):
         self.assets.append(asset)
@@ -53,14 +56,16 @@ class Trader:
 class Asset:
 
     def __init__(self, tag, pattern, interval, php):
-        self.php = PHP()
+        self.php = php
         self.tag = tag
         self.interval = interval
         self.pattern = pattern
-        constantsPath = "/contants/{}".format(pattern)
+        constantsPath = "constants/{}.txt".format(pattern.tag)
         self.constants = Constants(constantsPath)
 
 class DipPattern:
+
+    tag = "dip"
 
     def scan(self, asset):
         constants = asset.constants
@@ -68,20 +73,20 @@ class DipPattern:
         averageChange = bars.averageChange()
         lastBar = bars.barAtIndex(bars.count - 2)
         lastBarChange = lastBar.change
-        print(asset.tag.upper() + "\n")
-        print("Interval: {}\n".format(asset.interval))
-        print("Average change: {}\n".format(averageChange))
-        print("Last bar change: {}\n".format(lastBarChange))
+        print(asset.tag.upper())
+        print("Interval: {}".format(asset.interval))
+        print("Average change: {}".format(averageChange))
+        print("Last bar change: {}".format(lastBarChange))
         if lastBarChange < averageChange:
             points = Points(bars, asset)
             trade = points.countPoints()
             trade.wData = points.getwData
             trade.asset = asset
-            risk = trade.calculateRisk
+            risk = trade.calculateRisk()
             if trade.entry >= trade.trigger and risk > 0 and points.score >= constants.SCORE_LEVEL and points.barScore >= constants.SCORE_LEVEL/2:
                 trade.calculateBuyVolume()
                 cost = trade.calculateCost()
-                print("Cost: {}\n".format(cost))
+                print("Cost: {}".format(cost))
                 if cost <= constants.COST_HIGH and cost >= constants.COST_LOW:
                     return trade
         return None
@@ -92,14 +97,14 @@ class DipPattern:
         currHigh = currBar.high
         currClose = currBar.close
         trade.currR = (currClose - trade.entry)/trade.risk
-        print(asset.tag.upper() + "\n")
-        print("Entry: {}\n".format(trade.entry))
-        print("Stop: {}\n".format(trade.stop))
-        print("Goal: {}\n".format(trade.goal))
-        print("Current price: {}\n".format(currClose))
-        print("Current high: {}\n".format(currHigh))
-        print("R: {}\n".format(trade.risk))
-        print("Current R: {}\n".format(trade.currR))
+        print(asset.tag.upper())
+        print("Entry: {}".format(trade.entry))
+        print("Stop: {}".format(trade.stop))
+        print("Goal: {}".format(trade.goal))
+        print("Current price: {}".format(currClose))
+        print("Current high: {}".format(currHigh))
+        print("R: {}".format(trade.risk))
+        print("Current R: {}".format(trade.currR))
         if currClose <= trade.stop and currClose != 0.0:
             originalStop = trade.entry - trade.risk
             trade.stop = originalStop
@@ -125,15 +130,14 @@ class Bar:
 
 class Bars:
 
-    bars = []
-    totalVolume = 0
-    totalChange = 0
-    count = 0
-    chunks = []
-
     def __init__(self, array):
+        self.bars = []
+        self.totalVolume = 0
+        self.totalChange = 0
+        self.count = 0
+        self.chunks = []
+
         for entry in array:
-            print(str(type(entry)))
             if str(type(entry)) == """<class 'Trading.Bar'>""":
                 bar = entry
             else:
@@ -162,7 +166,8 @@ class Bars:
             bar = self.bars[i]
             chunk.append(bar)
             if(j == chunkSize):
-                chunks.append(Bars(chunk))
+                chunkBars = Bars(chunk)
+                chunks.append(chunkBars)
                 j = 0
                 chunk = []
             i += 1
@@ -181,7 +186,7 @@ class Bars:
             self.toChunks(chunkSize)
         lowests = []
         for chunk in self.chunks:
-            lowests += chunk.lowest
+            lowests.append(chunk.lowest())
         return lowests
     
     def highest(self):
@@ -196,14 +201,14 @@ class Bars:
             self.toChunks(chunkSize)
         highests = []
         for chunk in self.chunks:
-            highests += chunk.highest
+            highests.append(chunk.highest())
         return highests
 
     def barAtIndex(self, index):
         if index <= self.count - 1 and index >= 0:
             return self.bars[index]
         else:
-            print("Index error at Bars.barAtIndex\n")
+            print("Index error at Bars.barAtIndex")
             return None
 
     def countPivots(self, pivots, stop, distance):
@@ -257,14 +262,13 @@ class Points:
             i += 1
         
         distance = self.bars.averageChange()*self.constants.PIVOT_DIST_BAR_LENGTHS
-        self.supportW = self.bars.countPivots(self.bars.supports(), trade.stop, distance)  
-        self.resistanceW = self.bars.countPivots(self.bars.resistances(), trade.stop, distance)
+        self.supportW = self.bars.countPivots(self.bars.supports(self.constants.CHUNK_SIZE), trade.stop, distance)  
+        self.resistanceW = self.bars.countPivots(self.bars.resistances(self.constants.CHUNK_SIZE), trade.stop, distance)
         self.score += (self.supportW*self.constants.SUPPORT_SCALE + self.resistanceW*self.constants.RESISTANCE_SCALE)
-
-        print("Change bars: {}\n".format(self.changeW))
-        print("Volume bars: {}\n".format(self.volumeW))
-        print("Supports: {}\n".format(self.supportW))
-        print("Resistances: {}\n".format(self.resistanceW))
+        print("Change bars: {}".format(self.changeW))
+        print("Volume bars: {}".format(self.volumeW))
+        print("Supports: {}".format(self.supportW))
+        print("Resistances: {}".format(self.resistanceW))
 
         return trade
 
@@ -281,16 +285,17 @@ class Points:
 
 class Trade:
 
-    stop = 0
-    entry = 0
-    goal = 0
-    risk = 0
-    trigger = 0
-    buyVolume = 0
-    cost = 0
-    asset = None
-    currR = 0
-    wData = []
+    def __init__(self):
+        self.stop = 0
+        self.entry = 0
+        self.goal = 0
+        self.risk = 0
+        self.trigger = 0
+        self.buyVolume = 0
+        self.cost = 0
+        self.asset = None
+        self.currR = 0
+        self.wData = []
     
     def calculateRisk(self):
         self.risk = self.entry - self.stop

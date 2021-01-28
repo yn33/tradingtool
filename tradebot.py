@@ -11,14 +11,12 @@ for arg in sys.argv[1:]:
     if(arg == "trade_testmode"):
         trader.php.TEST_MODE = True
         print("Trading in test mode.")
-        print("\n")
         if(os.path.getsize("data.txt") > 1):
             trader.processTrade()
         else:
             trader.scan()
     elif(arg == "trade"):
         print("Trading without test mode.")
-        print("\n")
         if(os.path.getsize("data.txt") > 1):
             trader.processTrade()
         else:
@@ -36,4 +34,3 @@ for arg in sys.argv[1:]:
         Logs().clear()
     else:
         print("Incorrect syntax.")
-        print("\n")

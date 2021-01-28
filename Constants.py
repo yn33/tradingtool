@@ -1,10 +1,17 @@
-from Logs import Logs
+def readConstants(path):
+    array = []
+    f = open(path, "r")
+    for x in f:
+        split = x.split()
+        array.append(split[1].strip("\n"))
+    f.close()
+    return array
 
 class Constants:
     
     def __init__(self, path):
 
-        array = Logs().readConstants(path)
+        array = readConstants(path)
 
         self.VOLUME_LEVEL = float(array[0])
         self.CHANGE_LEVEL = float(array[1])
@@ -29,13 +36,14 @@ class Constants:
                 self.COST_LOW]
         return array
 
+
 class Paths:
 
     def __init__(self, path):
 
-        paths = Logs().readConstants(path)
+        array = readConstants(path)
         
-        self.DATA_PATH = paths[1]
-        self.LOG_PATH = paths[2]
-        self.PHP_PATH = paths[3]
-        self.KRAKEN_PATH = paths[4]
+        self.DATA_PATH = array[0]
+        self.LOG_PATH = array[1]
+        self.PHP_PATH = array[2]
+        self.KRAKEN_PATH = array[3]

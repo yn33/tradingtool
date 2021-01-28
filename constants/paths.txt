@@ -1,0 +1,4 @@
+DATA_PATH data.txt
+LOG_PATH log.txt
+PHP_PATH C:/PHP/php
+KRAKEN_PATH C:/Users/User/Documents/kraken-api-client-master/php/kraken.php
