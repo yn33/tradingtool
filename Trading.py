@@ -80,7 +80,7 @@ class DipPattern:
         if lastBarChange < averageChange:
             points = Points(bars, asset)
             trade = points.countPoints()
-            trade.wData = points.getwData
+            trade.wData = points.getwData()
             trade.asset = asset
             risk = trade.calculateRisk()
             if trade.entry >= trade.trigger and risk > 0 and points.score >= constants.SCORE_LEVEL and points.barScore >= constants.SCORE_LEVEL/2:
@@ -91,6 +91,31 @@ class DipPattern:
                     return trade
         return None
 
+    def processTrade(self, trade, asset):
+        result = SimplePattern().processTrade(trade, asset)
+        return result
+
+class SimplePattern:
+
+    tag = "simple"
+
+    def scan(self, asset):
+        constants = asset.constants
+        bars = Bars(asset.php.getOHLC(asset))
+        print(asset.tag.upper())
+        print("Interval: {}".format(asset.interval))
+        print("Attempting entry with stop at minimum of last 2 bars, with risk and cost limits preset.")
+        points = Points(bars, asset)
+        trade = points.countPoints()
+        trade.asset = asset
+        risk = trade.calculateRisk()
+        if trade.entry >= trade.trigger and risk > 0:
+            trade.calculateBuyVolume()
+            cost = trade.calculateCost()
+            print("Cost: {}".format(cost))
+            if cost <= constants.COST_HIGH and cost >= constants.COST_LOW:
+                return trade
+    
     def processTrade(self, trade, asset):
         bars = Bars(asset.php.getOHLC(asset))
         currBar = bars.barAtIndex(bars.count - 1)
@@ -117,6 +142,12 @@ class DipPattern:
             trade.stop = oldGoal
             return True
         return None
+        
+
+
+
+
+
 
 class Bar:
     def __init__(self, array):
@@ -225,19 +256,37 @@ class Bars:
 
 class Points:
 
-    score = 0
-    barScore = 0
-    volumeW = 0
-    changeW = 0
-    supportW = 0
-    resistanceW = 0
-
     def __init__(self, bars, asset):
+
         self.bars = bars
         self.constants = asset.constants
         self.pattern = asset.pattern
-    
+        self.score = 0
+        self.barScore = 0
+        self.volumeW = 0
+        self.changeW = 0
+        self.supportW = 0
+        self.resistanceW = 0
+
     def countPoints(self):
+        tag = self.pattern.tag
+        if(tag == "dip"):
+            result = dip(self)
+        if(tag == "simple"):
+            result = simple(self)
+        return result
+
+    def simple(self):
+
+        ongoingBar = self.bars.barAtIndex(self.bars.count - 1)
+        trade = Trade()
+        trade.stop = min(ongoingBar.low, self.bars.barAtIndex(self.bars.count - 2).low) 
+        trade.entry = ongoingBar.close
+        #constants can have different meanings when using different patterns
+        trade.trigger = ongoingBar.open + self.constants.CHANGE_LEVEL
+        return trade
+    
+    def dip(self):
 
         ongoingBar = self.bars.barAtIndex(self.bars.count - 1)
         trade = Trade()
