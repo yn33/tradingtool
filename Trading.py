@@ -112,10 +112,19 @@ class SimplePattern:
         if trade.entry >= trade.trigger and risk > 0:
             trade.calculateBuyVolume()
             cost = trade.calculateCost()
-            print("Cost: {}".format(cost))
             if cost <= constants.COST_HIGH and cost >= constants.COST_LOW:
+                print("Cost: {}".format(cost))
                 return trade
-    
+            else:
+                print("Cost was not within limits.")
+                print("Cost: {}".format(cost))
+                print("Risk: {}".format(risk))
+        else:
+            print("Entry was less than trigger.")
+            print("Entry: {}".format(trade.entry))
+            print("Trigger: {}".format(trade.trigger))
+        return None
+
     def processTrade(self, trade, asset):
         bars = Bars(asset.php.getOHLC(asset))
         currBar = bars.barAtIndex(bars.count - 1)
@@ -271,9 +280,9 @@ class Points:
     def countPoints(self):
         tag = self.pattern.tag
         if(tag == "dip"):
-            result = dip(self)
+            result = self.dip()
         if(tag == "simple"):
-            result = simple(self)
+            result = self.simple()
         return result
 
     def simple(self):

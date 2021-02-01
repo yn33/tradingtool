@@ -2,7 +2,7 @@ def readConstants(path):
     array = []
     f = open(path, "r")
     for x in f:
-        split = x.split()
+        split = x.split('=')
         array.append(split[1].strip("\n"))
     f.close()
     return array

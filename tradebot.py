@@ -25,6 +25,8 @@ for arg in sys.argv[1:]:
         tag = arg
     elif(arg == "dip"):
         pattern = Trading.DipPattern()
+    elif(arg == "simple"):
+        pattern = Trading.SimplePattern()
     elif(arg == "1" or arg == "5" or arg == "15" or arg == "30"):
         if(tag != "" and pattern != None):
             trader.addAsset(Trading.Asset(tag, pattern, arg, trader.php))
