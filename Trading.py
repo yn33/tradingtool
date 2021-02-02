@@ -25,25 +25,28 @@ class Trader:
     def tryEnter(self, trade):
         result = self.php.enter(trade.asset.tag, trade.stop, trade.buyVolume)
         if result:
-            self.logs.logTrade(trade, datetime.datetime.now)
+            self.logs.logTrade(trade, datetime.datetime.now())
     
     def processTrade(self):
         info = self.logs.readTrade()
-        trade = Trade()
-        asset = Asset(info[0], info[1], self.php, info[2])
+        tag = info[1]
+        pattern = Pattern(tag)
+        asset = Asset(info[0], pattern.pattern, int(info[2]), self.php)
+        trade = Trade(asset)
         time = info[3]
-        trade.entry = info[4]
-        trade.stop = info[5]
-        trade.goal = info[6]
-        trade.risk = info[7]
-        trade.buyVolume = info[8]
+        trade.entry = float(info[4])
+        trade.stop = float(info[5])
+        trade.goal = float(info[6])
+        trade.risk = float(info[7])
+        trade.buyVolume = float(info[8])
         analytics = info[9]
-        processResult = asset.pattern.processTrade(trade, asset)
+        processResult = asset.pattern.processTrade(trade, trade.asset)
         if processResult != None:
             if processResult == False:
                 formatted = Logs().formatData([asset.tag, time, trade.entry, trade.stop, 
                 trade.goal, trade.currR, trade.risk, analytics])
                 self.logs.log(formatted)
+                self.logs.clear()
             if processResult == True:
                 self.tryRaise(trade, time)
 
@@ -63,6 +66,16 @@ class Asset:
         constantsPath = "constants/{}.txt".format(pattern.tag)
         self.constants = Constants(constantsPath)
 
+class Pattern:
+
+    def __init__(self, tag):
+        self.pattern = None
+        if(tag == "dip"):
+            self.pattern = DipPattern()
+        if(tag == "simple"):
+            self.pattern = SimplePattern()
+        
+
 class DipPattern:
 
     tag = "dip"
@@ -81,7 +94,6 @@ class DipPattern:
             points = Points(bars, asset)
             trade = points.countPoints()
             trade.wData = points.getwData()
-            trade.asset = asset
             risk = trade.calculateRisk()
             if trade.entry >= trade.trigger and risk > 0 and points.score >= constants.SCORE_LEVEL and points.barScore >= constants.SCORE_LEVEL/2:
                 trade.calculateBuyVolume()
@@ -107,8 +119,7 @@ class SimplePattern:
         print("Attempting entry with stop at minimum of last 2 bars, with risk and cost limits preset.")
         points = Points(bars, asset)
         trade = points.countPoints()
-        trade.asset = asset
-        risk = trade.calculateRisk()
+        risk = trade.risk
         if trade.entry >= trade.trigger and risk > 0:
             trade.calculateBuyVolume()
             cost = trade.calculateCost()
@@ -268,6 +279,7 @@ class Points:
     def __init__(self, bars, asset):
 
         self.bars = bars
+        self.asset = asset
         self.constants = asset.constants
         self.pattern = asset.pattern
         self.score = 0
@@ -283,12 +295,14 @@ class Points:
             result = self.dip()
         if(tag == "simple"):
             result = self.simple()
+        result.calculateRisk()
+        result.calculateGoal()
         return result
 
     def simple(self):
 
         ongoingBar = self.bars.barAtIndex(self.bars.count - 1)
-        trade = Trade()
+        trade = Trade(self.asset)
         trade.stop = min(ongoingBar.low, self.bars.barAtIndex(self.bars.count - 2).low) 
         trade.entry = ongoingBar.close
         #constants can have different meanings when using different patterns
@@ -298,7 +312,7 @@ class Points:
     def dip(self):
 
         ongoingBar = self.bars.barAtIndex(self.bars.count - 1)
-        trade = Trade()
+        trade = Trade(self.asset)
         trade.stop = min(ongoingBar.low, self.bars.barAtIndex(self.bars.count - 2).low) 
         trade.entry = ongoingBar.close
         trade.trigger = ongoingBar.open
@@ -343,7 +357,7 @@ class Points:
 
 class Trade:
 
-    def __init__(self):
+    def __init__(self, asset):
         self.stop = 0
         self.entry = 0
         self.goal = 0
@@ -351,7 +365,7 @@ class Trade:
         self.trigger = 0
         self.buyVolume = 0
         self.cost = 0
-        self.asset = None
+        self.asset = asset
         self.currR = 0
         self.wData = []
     
