@@ -35,4 +35,5 @@ for arg in sys.argv[1:]:
     elif(arg == "clear"):
         Logs().clear()
     else:
-        print("Incorrect syntax.")
+        print("Incorrect syntax:")
+        print(arg)

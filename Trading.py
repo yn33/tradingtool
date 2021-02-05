@@ -29,6 +29,9 @@ class Trader:
     
     def processTrade(self):
         info = self.logs.readTrade()
+        if(info[0] == "DISABLED"):
+            print("Trading disabled to stop repeating, use clear.")
+            return None
         tag = info[1]
         pattern = Pattern(tag)
         asset = Asset(info[0], pattern.pattern, int(info[2]), self.php)
@@ -46,7 +49,7 @@ class Trader:
                 formatted = Logs().formatData([asset.tag, time, trade.entry, trade.stop, 
                 trade.goal, trade.currR, trade.risk, analytics])
                 self.logs.log(formatted)
-                self.logs.clear()
+                self.logs.disable()
             if processResult == True:
                 self.tryRaise(trade, time)
 
@@ -94,13 +97,9 @@ class DipPattern:
             points = Points(bars, asset)
             trade = points.countPoints()
             trade.wData = points.getwData()
-            risk = trade.calculateRisk()
-            if trade.entry >= trade.trigger and risk > 0 and points.score >= constants.SCORE_LEVEL and points.barScore >= constants.SCORE_LEVEL/2:
-                trade.calculateBuyVolume()
-                cost = trade.calculateCost()
-                print("Cost: {}".format(cost))
-                if cost <= constants.COST_HIGH and cost >= constants.COST_LOW:
-                    return trade
+            if points.score >= constants.SCORE_LEVEL and points.barScore >= constants.SCORE_LEVEL/2:
+                withCost = SimplePattern().simpleEntry(trade)
+                return withCost
         return None
 
     def processTrade(self, trade, asset):
@@ -112,15 +111,18 @@ class SimplePattern:
     tag = "simple"
 
     def scan(self, asset):
-        constants = asset.constants
         bars = Bars(asset.php.getOHLC(asset))
         print(asset.tag.upper())
         print("Interval: {}".format(asset.interval))
         print("Attempting entry with stop at minimum of last 2 bars, with risk and cost limits preset.")
         points = Points(bars, asset)
         trade = points.countPoints()
-        risk = trade.risk
-        if trade.entry >= trade.trigger and risk > 0:
+        result = self.simpleEntry(trade)
+        return result
+
+    def simpleEntry(self, trade):
+        constants = trade.asset.constants
+        if trade.entry >= trade.trigger and trade.risk > 0:
             trade.calculateBuyVolume()
             cost = trade.calculateCost()
             if cost <= constants.COST_HIGH and cost >= constants.COST_LOW:
@@ -129,7 +131,7 @@ class SimplePattern:
             else:
                 print("Cost was not within limits.")
                 print("Cost: {}".format(cost))
-                print("Risk: {}".format(risk))
+                print("Risk: {}".format(trade.risk))
         else:
             print("Entry was less than trigger.")
             print("Entry: {}".format(trade.entry))

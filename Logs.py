@@ -45,6 +45,14 @@ class Logs:
             return None
         f = open(self.paths.DATA_PATH, "w")
         f.close()
+    
+    def disable(self):
+        if self.paths == None:
+            print("No paths set at Logs.")
+            return None
+        f = open(self.paths.DATA_PATH, "w")
+        f.write("DISABLED")
+        f.close()
 
     def readTrade(self):
         if self.paths == None:
