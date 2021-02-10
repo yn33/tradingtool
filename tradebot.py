@@ -23,17 +23,17 @@ for arg in sys.argv[1:]:
             trader.scan()
     elif(arg == "link" or arg == "xbt" or arg == "eth" or arg == "xrp" or arg == "ltc"):
         tag = arg
-    elif(arg == "dip"):
-        pattern = Trading.DipPattern()
+    elif(arg == "pattern"):
+        pattern = Trading.Pattern()
     elif(arg == "simple"):
-        pattern = Trading.SimplePattern()
+        pattern = Trading.Simple()
     elif(arg == "1" or arg == "5" or arg == "15" or arg == "30"):
         if(tag != "" and pattern != None):
             trader.addAsset(Trading.Asset(tag, pattern, arg, trader.php))
             tag = ""
             pattern = None
     elif(arg == "clear"):
-        Logs().clear()
+        trader.logs.clear()
     else:
         print("Incorrect syntax:")
         print(arg)

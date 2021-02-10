@@ -16,8 +16,10 @@ class Trader:
         self.assets.append(asset)
 
     def scan(self):
+        
         for asset in self.assets:
-            scanResult = asset.pattern.scan(asset)
+            bars = Bars(self.php.getOHLC(asset))
+            scanResult = asset.pattern.scan(asset, bars)
             if scanResult != None:
                 scanResult.asset = asset
                 self.tryEnter(scanResult)
@@ -33,8 +35,12 @@ class Trader:
             print("Trading disabled to stop repeating, use clear.")
             return None
         tag = info[1]
-        pattern = Pattern(tag)
-        asset = Asset(info[0], pattern.pattern, int(info[2]), self.php)
+        pattern = None
+        if tag == "pattern":
+            pattern = Pattern()
+        if tag == "simple":
+            pattern = Simple()
+        asset = Asset(info[0], pattern, int(info[2]), self.php)
         trade = Trade(asset)
         time = info[3]
         trade.entry = float(info[4])
@@ -49,7 +55,10 @@ class Trader:
                 formatted = Logs().formatData([asset.tag, time, trade.entry, trade.stop, 
                 trade.goal, trade.currR, trade.risk, analytics])
                 self.logs.log(formatted)
-                self.logs.disable()
+                if(tag == "scan"):
+                    self.logs.clear()
+                else:
+                    self.logs.disable()
             if processResult == True:
                 self.tryRaise(trade, time)
 
@@ -69,23 +78,13 @@ class Asset:
         constantsPath = "constants/{}.txt".format(pattern.tag)
         self.constants = Constants(constantsPath)
 
+
 class Pattern:
 
-    def __init__(self, tag):
-        self.pattern = None
-        if(tag == "dip"):
-            self.pattern = DipPattern()
-        if(tag == "simple"):
-            self.pattern = SimplePattern()
-        
+    tag = "pattern"
 
-class DipPattern:
-
-    tag = "dip"
-
-    def scan(self, asset):
+    def scan(self, asset, bars):
         constants = asset.constants
-        bars = Bars(asset.php.getOHLC(asset))
         averageChange = bars.averageChange()
         lastBar = bars.barAtIndex(bars.count - 2)
         lastBarChange = lastBar.change
@@ -98,20 +97,20 @@ class DipPattern:
             trade = points.countPoints()
             trade.wData = points.getwData()
             if points.score >= constants.SCORE_LEVEL and points.barScore >= constants.SCORE_LEVEL/2:
-                withCost = SimplePattern().simpleEntry(trade)
+                withCost = Simple().simpleEntry(trade)
                 return withCost
         return None
 
     def processTrade(self, trade, asset):
-        result = SimplePattern().processTrade(trade, asset)
+        result = Simple().processTrade(trade, asset)
         return result
 
-class SimplePattern:
+class Simple:
 
     tag = "simple"
 
-    def scan(self, asset):
-        bars = Bars(asset.php.getOHLC(asset))
+    def scan(self, asset, bars):
+
         print(asset.tag.upper())
         print("Interval: {}".format(asset.interval))
         print("Attempting entry with stop at minimum of last 2 bars, with risk and cost limits preset.")
@@ -292,59 +291,58 @@ class Points:
         self.resistanceW = 0
 
     def countPoints(self):
+
         tag = self.pattern.tag
-        if(tag == "dip"):
-            result = self.dip()
+
+        if(tag == "pattern"):
+            
+            ongoingBar = self.bars.barAtIndex(self.bars.count - 1)
+            trade = Trade(self.asset)
+            trade.stop = min(ongoingBar.low, self.bars.barAtIndex(self.bars.count - 2).low) 
+            trade.entry = ongoingBar.close
+            trade.trigger = ongoingBar.open + self.bars.self.constants.TRIGGER_BAR_LENGTHS
+
+            i = 2
+            changeLevel = self.bars.averageChange()*self.constants.CHANGE_LEVEL
+            volumeLevel = self.bars.averageVolume()*self.constants.VOLUME_LEVEL
+
+            while i < self.constants.AMOUNT_OF_BARS + 2:
+                currentBar = self.bars.barAtIndex(self.bars.count - i)
+                if (currentBar.open - currentBar.close) > changeLevel:
+                    self.score += 1*self.constants.CHANGE_SCALE
+                    self.barScore += 1*self.constants.CHANGE_SCALE
+                    self.changeW += 1
+                if currentBar.volume > volumeLevel and currentBar.open > currentBar.close:
+                    self.score += 1*self.constants.VOLUME_SCALE
+                    self.barScore += 1*self.constants.VOLUME_SCALE
+                    self.volumeW += 1
+                i += 1
+            
+            distance = self.bars.averageChange()*self.constants.PIVOT_DIST_BAR_LENGTHS
+            self.supportW = self.bars.countPivots(self.bars.supports(self.constants.CHUNK_SIZE), trade.stop, distance)  
+            self.resistanceW = self.bars.countPivots(self.bars.resistances(self.constants.CHUNK_SIZE), trade.stop, distance)
+            self.score += (self.supportW*self.constants.SUPPORT_SCALE + self.resistanceW*self.constants.RESISTANCE_SCALE)
+            print("Change bars: {}".format(self.changeW))
+            print("Volume bars: {}".format(self.volumeW))
+            print("Supports: {}".format(self.supportW))
+            print("Resistances: {}".format(self.resistanceW))
+
+            trade.calculateRisk()
+            trade.calculateGoal()  
+
+            return trade
+
         if(tag == "simple"):
-            result = self.simple()
-        result.calculateRisk()
-        result.calculateGoal()
-        return result
 
-    def simple(self):
+            ongoingBar = self.bars.barAtIndex(self.bars.count - 1)
+            trade = Trade(self.asset)
+            trade.stop = min(ongoingBar.low, self.bars.barAtIndex(self.bars.count - 2).low) 
+            trade.entry = ongoingBar.close
+            trade.trigger = ongoingBar.open + self.bars.self.constants.TRIGGER_BAR_LENGTHS
 
-        ongoingBar = self.bars.barAtIndex(self.bars.count - 1)
-        trade = Trade(self.asset)
-        trade.stop = min(ongoingBar.low, self.bars.barAtIndex(self.bars.count - 2).low) 
-        trade.entry = ongoingBar.close
-        #constants can have different meanings when using different patterns
-        trade.trigger = ongoingBar.open + self.constants.CHANGE_LEVEL
-        return trade
-    
-    def dip(self):
-
-        ongoingBar = self.bars.barAtIndex(self.bars.count - 1)
-        trade = Trade(self.asset)
-        trade.stop = min(ongoingBar.low, self.bars.barAtIndex(self.bars.count - 2).low) 
-        trade.entry = ongoingBar.close
-        trade.trigger = ongoingBar.open
-
-        i = 2
-        changeLevel = self.bars.averageChange()*self.constants.CHANGE_LEVEL
-        volumeLevel = self.bars.averageVolume()*self.constants.VOLUME_LEVEL
-
-        while i < self.constants.AMOUNT_OF_BARS + 2:
-            currentBar = self.bars.barAtIndex(self.bars.count - i)
-            if (currentBar.open - currentBar.close) > changeLevel:
-                self.score += 1*self.constants.CHANGE_SCALE
-                self.barScore += 1*self.constants.CHANGE_SCALE
-                self.changeW += 1
-            if currentBar.volume > volumeLevel and currentBar.open > currentBar.close:
-                self.score += 1*self.constants.VOLUME_SCALE
-                self.barScore += 1*self.constants.VOLUME_SCALE
-                self.volumeW += 1
-            i += 1
-        
-        distance = self.bars.averageChange()*self.constants.PIVOT_DIST_BAR_LENGTHS
-        self.supportW = self.bars.countPivots(self.bars.supports(self.constants.CHUNK_SIZE), trade.stop, distance)  
-        self.resistanceW = self.bars.countPivots(self.bars.resistances(self.constants.CHUNK_SIZE), trade.stop, distance)
-        self.score += (self.supportW*self.constants.SUPPORT_SCALE + self.resistanceW*self.constants.RESISTANCE_SCALE)
-        print("Change bars: {}".format(self.changeW))
-        print("Volume bars: {}".format(self.volumeW))
-        print("Supports: {}".format(self.supportW))
-        print("Resistances: {}".format(self.resistanceW))
-
-        return trade
+            trade.calculateRisk()
+            trade.calculateGoal()
+            return trade
 
     def resetPoints(self):
         self.score = 0
