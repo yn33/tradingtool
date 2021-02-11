@@ -1,5 +1,6 @@
 import sys
 import os
+import time
 import Trading
 from Logs import Logs
 
@@ -7,20 +8,22 @@ trader = Trading.Trader()
 tag = ""
 pattern = None
 
+def start(trader):
+    while True:
+        if(os.path.getsize("data.txt") > 1):
+            trader.processTrade()
+        else:
+            trader.scan()
+        time.sleep(10)
+
 for arg in sys.argv[1:]:
     if(arg == "trade_testmode"):
         trader.php.TEST_MODE = True
         print("Trading in test mode.")
-        if(os.path.getsize("data.txt") > 1):
-            trader.processTrade()
-        else:
-            trader.scan()
+        start(trader)
     elif(arg == "trade"):
         print("Trading without test mode.")
-        if(os.path.getsize("data.txt") > 1):
-            trader.processTrade()
-        else:
-            trader.scan()
+        start(trader)
     elif(arg == "link" or arg == "xbt" or arg == "eth" or arg == "xrp" or arg == "ltc"):
         tag = arg
     elif(arg == "pattern"):

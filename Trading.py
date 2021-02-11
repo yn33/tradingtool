@@ -55,7 +55,7 @@ class Trader:
                 formatted = Logs().formatData([asset.tag, time, trade.entry, trade.stop, 
                 trade.goal, trade.currR, trade.risk, analytics])
                 self.logs.log(formatted)
-                if(tag == "scan"):
+                if(tag == "pattern"):
                     self.logs.clear()
                 else:
                     self.logs.disable()
@@ -300,7 +300,7 @@ class Points:
             trade = Trade(self.asset)
             trade.stop = min(ongoingBar.low, self.bars.barAtIndex(self.bars.count - 2).low) 
             trade.entry = ongoingBar.close
-            trade.trigger = ongoingBar.open + self.bars.self.constants.TRIGGER_BAR_LENGTHS
+            trade.trigger = ongoingBar.open + self.bars.averageChange()*self.constants.TRIGGER_BAR_LENGTHS
 
             i = 2
             changeLevel = self.bars.averageChange()*self.constants.CHANGE_LEVEL
@@ -338,7 +338,7 @@ class Points:
             trade = Trade(self.asset)
             trade.stop = min(ongoingBar.low, self.bars.barAtIndex(self.bars.count - 2).low) 
             trade.entry = ongoingBar.close
-            trade.trigger = ongoingBar.open + self.bars.self.constants.TRIGGER_BAR_LENGTHS
+            trade.trigger = ongoingBar.open + self.bars.averageChange()*self.constants.TRIGGER_BAR_LENGTHS
 
             trade.calculateRisk()
             trade.calculateGoal()
