@@ -155,7 +155,7 @@ class Simple:
             originalStop = trade.entry - trade.risk
             trade.stop = originalStop
             return False
-        elif currClose > trade.goal:
+        elif currClose >= trade.goal:
             newGoal = trade.goal + trade.risk
             oldGoal = trade.goal
             trade.goal = newGoal
@@ -306,7 +306,7 @@ class Points:
             changeLevel = self.bars.averageChange()*self.constants.CHANGE_LEVEL
             volumeLevel = self.bars.averageVolume()*self.constants.VOLUME_LEVEL
 
-            while i < self.constants.AMOUNT_OF_BARS + 2:
+            while i < self.constants.AMOUNT_OF_BARS + 2 and i <= self.bars.count:
                 currentBar = self.bars.barAtIndex(self.bars.count - i)
                 if (currentBar.open - currentBar.close) > changeLevel:
                     self.score += 1*self.constants.CHANGE_SCALE

@@ -25,7 +25,10 @@ for arg in sys.argv[1:]:
         print("Trading without test mode.")
         start(trader)
     elif(arg == "link" or arg == "xbt" or arg == "eth" or arg == "xrp" or arg == "ltc"):
-        tag = arg
+        if pattern == None:
+            tag = arg
+        else:
+            print("Incorrect syntax.")
     elif(arg == "pattern"):
         pattern = Trading.Pattern()
     elif(arg == "simple"):
