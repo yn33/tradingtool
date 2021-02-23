@@ -83,6 +83,15 @@ class Pattern:
 
     tag = "pattern"
 
+    def testScan(self, asset, bars, averageChange, lastBarChange, constants):
+        if lastBarChange < averageChange:
+            points = Points(bars, asset)
+            trade = points.countPoints()
+            if points.score >= constants.SCORE_LEVEL and points.barScore >= constants.SCORE_LEVEL/2:
+                withCost = Simple().simpleEntry(trade)
+                return withCost
+        return None
+    
     def scan(self, asset, bars):
         constants = asset.constants
         averageChange = bars.averageChange()
@@ -125,16 +134,16 @@ class Simple:
             trade.calculateBuyVolume()
             cost = trade.calculateCost()
             if cost <= constants.COST_HIGH and cost >= constants.COST_LOW:
-                print("Cost: {}".format(cost))
+                #print("Cost: {}".format(cost))
                 return trade
-            else:
-                print("Cost was not within limits.")
-                print("Cost: {}".format(cost))
-                print("Risk: {}".format(trade.risk))
-        else:
-            print("Entry was less than trigger.")
-            print("Entry: {}".format(trade.entry))
-            print("Trigger: {}".format(trade.trigger))
+            #else:
+                #print("Cost was not within limits.")
+                #print("Cost: {}".format(cost))
+                #print("Risk: {}".format(trade.risk))
+        #else:
+            #print("Entry was less than trigger.")
+            #print("Entry: {}".format(trade.entry))
+            #print("Trigger: {}".format(trade.trigger))
         return None
 
     def processTrade(self, trade, asset):
@@ -322,10 +331,10 @@ class Points:
             self.supportW = self.bars.countPivots(self.bars.supports(self.constants.CHUNK_SIZE), trade.stop, distance)  
             self.resistanceW = self.bars.countPivots(self.bars.resistances(self.constants.CHUNK_SIZE), trade.stop, distance)
             self.score += (self.supportW*self.constants.SUPPORT_SCALE + self.resistanceW*self.constants.RESISTANCE_SCALE)
-            print("Change bars: {}".format(self.changeW))
-            print("Volume bars: {}".format(self.volumeW))
-            print("Supports: {}".format(self.supportW))
-            print("Resistances: {}".format(self.resistanceW))
+            #print("Change bars: {}".format(self.changeW))
+            #print("Volume bars: {}".format(self.volumeW))
+            #print("Supports: {}".format(self.supportW))
+            #print("Resistances: {}".format(self.resistanceW))
 
             trade.calculateRisk()
             trade.calculateGoal()  
