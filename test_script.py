@@ -76,22 +76,25 @@ for interval in intervals:
 
 
     VOLUME_LEVEL_OFFSET = -1
+    prev = True
+    if prev:
+        VOLUME_LEVEL_OFFSET = 3
     while VOLUME_LEVEL_OFFSET <= 4:
         asset.constants.VOLUME_LEVEL = VOLUME_LEVEL + VOLUME_LEVEL_OFFSET
         CHANGE_LEVEL_OFFSET = -1
-        if not prev and interval == 15 and asset.constants.VOLUME_LEVEL == 1.0:
-            CHANGE_LEVEL_OFFSET = -1
+        if prev:
+            CHANGE_LEVEL_OFFSET = 1
             prev = True
         while CHANGE_LEVEL_OFFSET <= 4:
             asset.constants.CHANGE_LEVEL = CHANGE_LEVEL + CHANGE_LEVEL_OFFSET
             SCORE_LEVEL_OFFSET = -4
             if prev:
-                SCORE_LEVEL_OFFSET = -3
+                SCORE_LEVEL_OFFSET = 10
             while SCORE_LEVEL_OFFSET <= 10:
                 asset.constants.SCORE_LEVEL = SCORE_LEVEL + SCORE_LEVEL_OFFSET
                 AMOUNT_OF_BARS_OFFSET = -3
                 if prev:
-                    AMOUNT_OF_BARS_OFFSET = -3
+                    AMOUNT_OF_BARS_OFFSET = -2
                 while AMOUNT_OF_BARS_OFFSET <= 10:
                     asset.constants.AMOUNT_OF_BARS = AMOUNT_OF_BARS + AMOUNT_OF_BARS_OFFSET
                     CHUNK_SIZE_OFFSET = 0
@@ -104,15 +107,15 @@ for interval in intervals:
                             PIVOT_DIST_OFFSET = 0.0
                         while PIVOT_DIST_OFFSET <= 0.0:
                             asset.constants.PIVOT_DIST_BAR_LENGTHS = PIVOT_DIST_BAR_LENGTHS + PIVOT_DIST_OFFSET
-                            CHANGE_SCALE_OFFSET = 0.0
+                            CHANGE_SCALE_OFFSET = -0.5
                             if prev:
-                                CHANGE_SCALE_OFFSET = 0.0
-                            while CHANGE_SCALE_OFFSET <= 0.0:
+                                CHANGE_SCALE_OFFSET = -0.5
+                            while CHANGE_SCALE_OFFSET <= 0.5:
                                 asset.constants.CHANGE_SCALE = CHANGE_SCALE + CHANGE_SCALE_OFFSET
-                                VOLUME_SCALE_OFFSET = 0.0
+                                VOLUME_SCALE_OFFSET = -0.5
                                 if prev:
-                                    VOLUME_SCALE_OFFSET = 0.0
-                                while VOLUME_SCALE_OFFSET <= 0.0:
+                                    VOLUME_SCALE_OFFSET = 0.5
+                                while VOLUME_SCALE_OFFSET <= 0.5:
                                     asset.constants.VOLUME_SCALE = VOLUME_SCALE + VOLUME_SCALE_OFFSET
                                     SUPPORT_SCALE_OFFSET = 0.0
                                     if prev:
@@ -126,7 +129,7 @@ for interval in intervals:
                                             asset.constants.RESISTANCE_SCALE = RESISTANCE_SCALE + RESISTANCE_SCALE_OFFSET
                                             TRIGGER_BAR_LENGTHS_OFFSET = -0.1
                                             if prev:
-                                                TRIGGER_BAR_LENGTHS_OFFSET = 0.1
+                                                TRIGGER_BAR_LENGTHS_OFFSET = 0.0
                                                 prev = False
                                             while TRIGGER_BAR_LENGTHS_OFFSET <= 0.1:
                                                 asset.constants.TRIGGER_BAR_LENGTHS = TRIGGER_BAR_LENGTHS + TRIGGER_BAR_LENGTHS_OFFSET
