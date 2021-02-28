@@ -41,6 +41,32 @@ def runScan(asset, barsArray, reverseArray, avgChanges, lastBarChanges, constant
         count += 1    
     return totalR
     
+f = open("testprev.txt", "r")
+line = f.read()
+f.close()
+array = line.split()
+PREV_INTERVAL = int(array[1])
+PREV_VOLUME = int(array[2])
+PREV_CHANGE = int(array[3])
+PREV_SCORE = int(array[4])
+PREV_AMOUNT = int(array[5])
+PREV_CHUNK = int(array[6])
+PREV_PIVOT = float(array[7])
+PREV_VSCALE = float(array[8])
+PREV_CSCALE = float(array[9])
+PREV_SUPP = float(array[10])
+PREV_RES = float(array[11])
+PREV_TRIGGER = float(array[12])
+
+if array[0] == "1":
+    prev = True
+
+if prev:
+    while len(intervals) > 0:
+        if intervals[0] == PREV_INTERVAL:
+            break
+        intervals.pop(0)
+
 for interval in intervals:
     asset = Trading.Asset(tag, pattern, interval, php)
     barData = php.getOHLC(asset)
@@ -61,7 +87,6 @@ for interval in intervals:
         lastBarChanges.append(lastBarChange)
         i += 1
 
-
     VOLUME_LEVEL = asset.constants.VOLUME_LEVEL
     CHANGE_LEVEL = asset.constants.CHANGE_SCALE
     SCORE_LEVEL = asset.constants.SCORE_LEVEL
@@ -74,47 +99,56 @@ for interval in intervals:
     RESISTANCE_SCALE = asset.constants.RESISTANCE_SCALE
     TRIGGER_BAR_LENGTHS = asset.constants.TRIGGER_BAR_LENGTHS
 
+    PREV_VOLUME = PREV_VOLUME - VOLUME_LEVEL
+    PREV_CHANGE = PREV_CHANGE - CHANGE_LEVEL
+    PREV_SCORE = PREV_SCORE - SCORE_LEVEL
+    PREV_AMOUNT = PREV_AMOUNT - AMOUNT_OF_BARS
+    PREV_CHUNK = PREV_CHUNK - CHUNK_SIZE
+    PREV_PIVOT = PREV_PIVOT - PIVOT_DIST_BAR_LENGTHS
+    PREV_VSCALE = PREV_VSCALE - VOLUME_SCALE
+    PREV_CSCALE = PREV_CSCALE - CHANGE_SCALE
+    PREV_SUPP = PREV_SUPP - SUPPORT_SCALE
+    PREV_RES = PREV_RES - RESISTANCE_SCALE
+    PREV_TRIGGER = PREV_TRIGGER - TRIGGER_BAR_LENGTHS + 0.1
 
     VOLUME_LEVEL_OFFSET = -1
-    prev = True
     if prev:
-        VOLUME_LEVEL_OFFSET = 3
+        VOLUME_LEVEL_OFFSET = PREV_VOLUME
     while VOLUME_LEVEL_OFFSET <= 4:
         asset.constants.VOLUME_LEVEL = VOLUME_LEVEL + VOLUME_LEVEL_OFFSET
         CHANGE_LEVEL_OFFSET = -1
         if prev:
-            CHANGE_LEVEL_OFFSET = 1
-            prev = True
+            CHANGE_LEVEL_OFFSET = PREV_CHANGE
         while CHANGE_LEVEL_OFFSET <= 4:
             asset.constants.CHANGE_LEVEL = CHANGE_LEVEL + CHANGE_LEVEL_OFFSET
             SCORE_LEVEL_OFFSET = -4
             if prev:
-                SCORE_LEVEL_OFFSET = 10
+                SCORE_LEVEL_OFFSET = PREV_SCORE
             while SCORE_LEVEL_OFFSET <= 10:
                 asset.constants.SCORE_LEVEL = SCORE_LEVEL + SCORE_LEVEL_OFFSET
                 AMOUNT_OF_BARS_OFFSET = -3
                 if prev:
-                    AMOUNT_OF_BARS_OFFSET = -2
+                    AMOUNT_OF_BARS_OFFSET = PREV_AMOUNT
                 while AMOUNT_OF_BARS_OFFSET <= 10:
                     asset.constants.AMOUNT_OF_BARS = AMOUNT_OF_BARS + AMOUNT_OF_BARS_OFFSET
                     CHUNK_SIZE_OFFSET = 0
                     if prev:
-                        CHUNK_SIZE_OFFSET = 0
+                        CHUNK_SIZE_OFFSET = PREV_CHUNK
                     while CHUNK_SIZE_OFFSET <= 0:
                         asset.constants.CHUNK_SIZE = CHUNK_SIZE + CHUNK_SIZE_OFFSET
                         PIVOT_DIST_OFFSET = 0.0
                         if prev:
-                            PIVOT_DIST_OFFSET = 0.0
+                            PIVOT_DIST_OFFSET = PREV_PIVOT
                         while PIVOT_DIST_OFFSET <= 0.0:
                             asset.constants.PIVOT_DIST_BAR_LENGTHS = PIVOT_DIST_BAR_LENGTHS + PIVOT_DIST_OFFSET
                             CHANGE_SCALE_OFFSET = -0.5
                             if prev:
-                                CHANGE_SCALE_OFFSET = -0.5
+                                CHANGE_SCALE_OFFSET = PREV_CSCALE
                             while CHANGE_SCALE_OFFSET <= 0.5:
                                 asset.constants.CHANGE_SCALE = CHANGE_SCALE + CHANGE_SCALE_OFFSET
                                 VOLUME_SCALE_OFFSET = -0.5
                                 if prev:
-                                    VOLUME_SCALE_OFFSET = 0.5
+                                    VOLUME_SCALE_OFFSET = PREV_VSCALE
                                 while VOLUME_SCALE_OFFSET <= 0.5:
                                     asset.constants.VOLUME_SCALE = VOLUME_SCALE + VOLUME_SCALE_OFFSET
                                     SUPPORT_SCALE_OFFSET = 0.0
@@ -129,7 +163,7 @@ for interval in intervals:
                                             asset.constants.RESISTANCE_SCALE = RESISTANCE_SCALE + RESISTANCE_SCALE_OFFSET
                                             TRIGGER_BAR_LENGTHS_OFFSET = -0.1
                                             if prev:
-                                                TRIGGER_BAR_LENGTHS_OFFSET = 0.0
+                                                TRIGGER_BAR_LENGTHS_OFFSET = 0.1
                                                 prev = False
                                             while TRIGGER_BAR_LENGTHS_OFFSET <= 0.1:
                                                 asset.constants.TRIGGER_BAR_LENGTHS = TRIGGER_BAR_LENGTHS + TRIGGER_BAR_LENGTHS_OFFSET
@@ -149,8 +183,11 @@ for interval in intervals:
                                                     asset.constants.TRIGGER_BAR_LENGTHS,
                                                     result)
                                                 print(resultString)
-                                                f = open("tests.txt", "a")
+                                                f = open("tests2.txt", "a")
                                                 f.write(resultString)
+                                                f.close()
+                                                f = open("testprev.txt", "w")
+                                                f.write("1 " + resultString)
                                                 f.close()
                                                 counter += 1
 
@@ -166,6 +203,9 @@ for interval in intervals:
             CHANGE_LEVEL_OFFSET += 1
         VOLUME_LEVEL_OFFSET += 1
 
+f = open("testprev.txt", "w")
+f.write("0 0 0 0 0 0 0 0 0 0 0 0 0")
+f.close()
 print("Scans finished, ran {} scans.".format(counter))
 
 
