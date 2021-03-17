@@ -1,5 +1,6 @@
 import sys
 import os
+import datetime
 import time
 import Trading
 from Logs import Logs
@@ -10,10 +11,17 @@ pattern = None
 
 def start(trader):
     while True:
+        print(datetime.datetime.now())
         if(os.path.getsize("data.txt") > 1):
-            trader.processTrade()
+            try:
+                trader.processTrade()
+            except:
+                print("Error with processTrade(). Trying again.")
         else:
-            trader.scan()
+            try: 
+                trader.scan()
+            except:
+                print("Error with scan. Trying again.")
         time.sleep(10)
 
 for arg in sys.argv[1:]:
@@ -35,7 +43,12 @@ for arg in sys.argv[1:]:
         pattern = Trading.Simple()
     elif(arg == "1" or arg == "5" or arg == "15" or arg == "30"):
         if(tag != "" and pattern != None):
-            trader.addAsset(Trading.Asset(tag, pattern, arg, trader.php))
+            constantsPath = ""
+            if pattern.tag == "pattern":
+                constantsPath = trader.paths.PATTERN_CONSTANTS_PATH
+            if pattern.tag == "simple":
+                constantsPath = trader.paths.SIMPLE_CONSTANTS_PATH
+            trader.addAsset(Trading.Asset(tag, pattern, arg, trader.php, constantsPath))
             tag = ""
             pattern = None
     elif(arg == "clear"):

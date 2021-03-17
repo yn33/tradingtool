@@ -17,7 +17,7 @@ class Constants:
         self.CHANGE_LEVEL = float(array[1])
         self.SCORE_LEVEL = float(array[2])
         self.AMOUNT_OF_BARS = float(array[3])
-        self.CHUNK_SIZE = int(array[4])
+        self.CHUNK_SIZE = float(array[4])
         self.PIVOT_LEVEL = float(array[5])
         self.PIVOT_DIST_BAR_LENGTHS = float(array[6])
         self.CHANGE_SCALE = float(array[7]) 
@@ -48,3 +48,6 @@ class Paths:
         self.LOG_PATH = array[1]
         self.PHP_PATH = array[2]
         self.KRAKEN_PATH = array[3]
+        self.TEST_CONSTANTS_PATH = array[4]
+        self.PATTERN_CONSTANTS_PATH = array[5]
+        self.SIMPLE_CONSTANTS_PATH = array[5]

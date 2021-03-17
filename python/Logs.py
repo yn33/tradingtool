@@ -21,7 +21,6 @@ class Logs:
         f.write("{}\n".format(trade.goal))
         f.write("{}\n".format(trade.risk))
         f.write("{}\n".format(trade.buyVolume))
-        f.write("{}\n".format(self.formatData(trade.wData)))
         f.close()
     
     def formatData(self, array):

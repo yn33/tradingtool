@@ -1,6 +1,6 @@
 from PHP import PHP
-from Constants import Constants
 from Constants import Paths
+from Constants import Constants
 import datetime
 from Logs import Logs
 
@@ -8,7 +8,7 @@ class Trader:
     php = PHP()
     assets = []
     logs = Logs()
-    paths = Paths("constants/paths.txt")
+    paths = Paths("paths.txt")
     logs.setPaths(paths)
     php.setPaths(paths)
 
@@ -36,11 +36,14 @@ class Trader:
             return None
         tag = info[1]
         pattern = None
+        constantsPath = ""
         if tag == "pattern":
             pattern = Pattern()
+            constantsPath = self.paths.PATTERN_CONSTANTS_PATH
         if tag == "simple":
             pattern = Simple()
-        asset = Asset(info[0], pattern, int(info[2]), self.php)
+            constantsPath = self.paths.SIMPLE_CONSTANTS_PATH
+        asset = Asset(info[0], pattern, int(info[2]), self.php, constantsPath)
         trade = Trade(asset)
         time = info[3]
         trade.entry = float(info[4])
@@ -48,12 +51,15 @@ class Trader:
         trade.goal = float(info[6])
         trade.risk = float(info[7])
         trade.buyVolume = float(info[8])
-        analytics = info[9]
         processResult = asset.pattern.processTrade(trade, trade.asset)
         if processResult != None:
             if processResult == False:
+                buyFee = trade.buyFee()
+                sellFee = trade.sellFee()
+                feeR = (buyFee + sellFee)/(trade.risk)
+                trade.currR = trade.currR - feeR
                 formatted = Logs().formatData([asset.tag, time, trade.entry, trade.stop, 
-                trade.goal, trade.currR, trade.risk, analytics])
+                trade.goal, trade.currR, trade.risk])
                 self.logs.log(formatted)
                 if(tag == "pattern"):
                     self.logs.clear()
@@ -70,13 +76,16 @@ class Trader:
 
 class Asset:
 
-    def __init__(self, tag, pattern, interval, php):
+    def __init__(self, tag, pattern, interval, php, constantsPath):
         self.php = php
         self.tag = tag
         self.interval = interval
         self.pattern = pattern
-        constantsPath = "constants/{}.txt".format(pattern.tag)
-        self.constants = Constants(constantsPath)
+        if constantsPath != "":
+            self.constants = Constants(constantsPath)
+        else:
+            print("No constants path for asset {}".format(self.tag))
+            return None
 
 
 class Pattern:
@@ -88,7 +97,7 @@ class Pattern:
             points = Points(bars, asset)
             trade = points.countPoints()
             if points.score >= constants.SCORE_LEVEL and points.barScore >= constants.SCORE_LEVEL/2:
-                withCost = Simple().simpleEntry(trade)
+                withCost = Simple().testEntry(trade)
                 return withCost
         return None
     
@@ -104,7 +113,6 @@ class Pattern:
         if lastBarChange < averageChange:
             points = Points(bars, asset)
             trade = points.countPoints()
-            trade.wData = points.getwData()
             if points.score >= constants.SCORE_LEVEL and points.barScore >= constants.SCORE_LEVEL/2:
                 withCost = Simple().simpleEntry(trade)
                 return withCost
@@ -128,22 +136,31 @@ class Simple:
         result = self.simpleEntry(trade)
         return result
 
+    def testEntry(self, trade):
+        constants = trade.asset.constants
+        if trade.entry >= trade.trigger and trade.risk > 0:
+            trade.calculateBuyVolume()
+            cost = trade.calculateCost()
+            if cost <= constants.COST_HIGH and cost >= constants.COST_LOW:
+                return trade
+        return None
+
     def simpleEntry(self, trade):
         constants = trade.asset.constants
         if trade.entry >= trade.trigger and trade.risk > 0:
             trade.calculateBuyVolume()
             cost = trade.calculateCost()
             if cost <= constants.COST_HIGH and cost >= constants.COST_LOW:
-                #print("Cost: {}".format(cost))
+                print("Cost: {}".format(cost))
                 return trade
-            #else:
-                #print("Cost was not within limits.")
-                #print("Cost: {}".format(cost))
-                #print("Risk: {}".format(trade.risk))
-        #else:
-            #print("Entry was less than trigger.")
-            #print("Entry: {}".format(trade.entry))
-            #print("Trigger: {}".format(trade.trigger))
+            else:
+                print("Cost was not within limits.")
+                print("Cost: {}".format(cost))
+                print("Risk: {}".format(trade.risk))
+        else:
+            print("Entry was less than trigger.")
+            print("Entry: {}".format(trade.entry))
+            print("Trigger: {}".format(trade.trigger))
         return None
 
     def processTrade(self, trade, asset):
@@ -361,8 +378,6 @@ class Points:
         self.supportW = 0
         self.resistanceW = 0
 
-    def getwData(self):
-        return [self.changeW, self.volumeW, self.supportW, self.resistanceW]
 
 class Trade:
 
@@ -376,7 +391,6 @@ class Trade:
         self.cost = 0
         self.asset = asset
         self.currR = 0
-        self.wData = []
     
     def calculateRisk(self):
         self.risk = self.entry - self.stop
@@ -405,6 +419,12 @@ class Trade:
             self.goal = round(self.goal, 2)
         elif tag == 'xrp' or tag == 'link':
             self.goal == round(self.goal, 5)
+
+    def buyFee(self):
+        return 0.026*self.entry
+    
+    def sellFee(self):
+        return 0.026*self.stop
 
 
 
