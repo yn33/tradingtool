@@ -3,7 +3,7 @@ from Constants import Paths
 from Constants import Constants
 
 best = [""] * 10
-bestValues = [0.0] * 10
+bestValues = [-2000.0] * 10
 averages = {}
 amounts = {}
 

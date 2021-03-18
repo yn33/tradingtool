@@ -16,7 +16,12 @@ class PHP:
         if self.paths == None:
             print("No paths set at PHP")
             return None
-        output = subprocess.run([self.paths.PHP_PATH, self.paths.KRAKEN_PATH, str(asset.tag), str(asset.interval)], capture_output=True, text=True).stdout
+        f = open(self.paths.KEYS_PATH, 'r')
+        key = f.readline().rstrip('\n')
+        secret = f.readline().rstrip('\n')
+        f.close()
+
+        output = subprocess.run([self.paths.PHP_PATH, self.paths.KRAKEN_PATH, key, secret, str(asset.tag), str(asset.interval)], capture_output=True, text=True).stdout
         array = json.loads(output)
         return array
     

@@ -113,6 +113,9 @@ class Pattern:
         if lastBarChange < averageChange:
             points = Points(bars, asset)
             trade = points.countPoints()
+            print("Bar score: {}".format(points.barScore))
+            print("Score: {}".format(points.score))
+            print("Score level: {}".format(constants.SCORE_LEVEL))
             if points.score >= constants.SCORE_LEVEL and points.barScore >= constants.SCORE_LEVEL/2:
                 withCost = Simple().simpleEntry(trade)
                 return withCost
@@ -151,6 +154,8 @@ class Simple:
             trade.calculateBuyVolume()
             cost = trade.calculateCost()
             if cost <= constants.COST_HIGH and cost >= constants.COST_LOW:
+                print("Entry: {}\n".format(trade.entry))
+                print("Stop: {}\n".format(trade.stop))
                 print("Cost: {}".format(cost))
                 return trade
             else:
@@ -193,9 +198,6 @@ class Simple:
 
 
 
-
-
-
 class Bar:
     def __init__(self, array):
         self.time = int(array[0])
@@ -234,6 +236,46 @@ class Bars:
 
     def averageChange(self):
         return self.totalChange/self.count
+
+    def maxPriceBetween(self, start, stop):
+        if start > self.count - 1 or start < 0 or stop > self.count or stop < 0:
+            print("Index error at maxPriceBetween\n")
+            return None
+        i = start + 1
+        maxPrice = self.bars[start].high
+        while i <= stop:
+            if self.bars[i].high > maxPrice:
+                maxPrice = self.bars[i].high
+            i += 1
+        return maxPrice
+    
+    def minPriceBetween(self, start, stop):
+        if start > self.count - 1 or start < 0 or stop > self.count or stop < 0:
+            print("Index error at minPriceBetween\n")
+            return None
+        i = start + 1
+        minPrice = self.bars[start].low
+        while i <= stop:
+            if self.bars[i].low < minPrice:
+                minPrice = self.bars[i].low
+            i += 1
+        return minPrice
+
+    def averagePriceBetween(self, start, stop):
+        if start > self.count - 1 or start < 0 or stop > self.count or stop < 0:
+            print("Index error at averagePriceBetween\n")
+            return None
+        i = start
+        totalPrice = 0.0
+        totalAmount = 0
+        while i <= stop:
+            totalPrice += self.bars[close]
+            totalPrice += self.bars[open]
+            totalAmount += 2
+            i += 1
+        averagePrice = totalPrice/totalAmount
+        return averagePrice
+
 
     def toChunks(self, chunkSize):
         chunks = []
@@ -283,11 +325,10 @@ class Bars:
         return highests
 
     def barAtIndex(self, index):
-        if index <= self.count - 1 and index >= 0:
-            return self.bars[index]
-        else:
-            print("Index error at Bars.barAtIndex")
+        if index > self.count - 1 and index < 0:
+            print("Index error at Bars.barAtIndex\n")
             return None
+        return self.bars[index]
 
     def countPivots(self, pivots, stop, distance):
         count = 0
@@ -311,10 +352,6 @@ class Points:
         self.pattern = asset.pattern
         self.score = 0
         self.barScore = 0
-        self.volumeW = 0
-        self.changeW = 0
-        self.supportW = 0
-        self.resistanceW = 0
 
     def countPoints(self):
 
@@ -335,23 +372,30 @@ class Points:
             while i < self.constants.AMOUNT_OF_BARS + 2 and i <= self.bars.count:
                 currentBar = self.bars.barAtIndex(self.bars.count - i)
                 if (currentBar.open - currentBar.close) > changeLevel:
-                    self.score += 1*self.constants.CHANGE_SCALE
                     self.barScore += 1*self.constants.CHANGE_SCALE
-                    self.changeW += 1
                 if currentBar.volume > volumeLevel and currentBar.open > currentBar.close:
-                    self.score += 1*self.constants.VOLUME_SCALE
                     self.barScore += 1*self.constants.VOLUME_SCALE
-                    self.volumeW += 1
+                if (currentBar.close - currentBar.open) > changeLevel and i < self.bars.count:
+                    start = int(self.bars.count - i - self.constants.CHUNK_SIZE - 1)
+                    if start < 0:
+                        start = 0
+                    maxPrice = self.bars.maxPriceBetween(start, self.bars.count - i - 1)
+                    if currentBar.close < maxPrice and currentBar.open > maxPrice:
+                        distance = self.bars.averageChange()*self.constants.PIVOT_DIST_BAR_LENGTHS
+                        if trade.entry > (maxPrice - distance) and trade.entry < (maxPrice + distance): 
+                            self.barScore += 3*self.constants.CHANGE_SCALE
+                        else:
+                            self.barScore += 1*self.constants.CHANGE_SCALE         
+
+                    
+
                 i += 1
             
             distance = self.bars.averageChange()*self.constants.PIVOT_DIST_BAR_LENGTHS
-            self.supportW = self.bars.countPivots(self.bars.supports(self.constants.CHUNK_SIZE), trade.stop, distance)  
-            self.resistanceW = self.bars.countPivots(self.bars.resistances(self.constants.CHUNK_SIZE), trade.stop, distance)
-            self.score += (self.supportW*self.constants.SUPPORT_SCALE + self.resistanceW*self.constants.RESISTANCE_SCALE)
-            #print("Change bars: {}".format(self.changeW))
-            #print("Volume bars: {}".format(self.volumeW))
-            #print("Supports: {}".format(self.supportW))
-            #print("Resistances: {}".format(self.resistanceW))
+            supportW = self.bars.countPivots(self.bars.supports(self.constants.CHUNK_SIZE), trade.stop, distance)  
+            resistanceW = self.bars.countPivots(self.bars.resistances(self.constants.CHUNK_SIZE), trade.stop, distance)
+            self.score = self.barScore + (supportW*self.constants.SUPPORT_SCALE + resistanceW*self.constants.RESISTANCE_SCALE)
+
 
             trade.calculateRisk()
             trade.calculateGoal()  
@@ -373,10 +417,6 @@ class Points:
     def resetPoints(self):
         self.score = 0
         self.barScore = 0
-        self.volumeW = 0
-        self.changeW = 0
-        self.supportW = 0
-        self.resistanceW = 0
 
 
 class Trade:

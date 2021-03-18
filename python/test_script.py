@@ -11,6 +11,7 @@ php.TEST_MODE = True
 paths = Paths("paths.txt")
 php.setPaths(paths)
 constantsPath = paths.TEST_CONSTANTS_PATH
+testsPath = sys.argv[1]
 intervals = [15]
 pattern = Trading.Pattern()
 counter = 0
@@ -59,8 +60,10 @@ PREV_VSCALE = float(array[9])
 PREV_SUPP = float(array[10])
 PREV_RES = float(array[11])
 PREV_TRIGGER = float(array[12])
+PREV_TESTPATH = array[14]
 
-if array[0] == "1":
+if array[0] == "1" and PREV_TESTPATH == testsPath:
+    print("Setting previous values.")
     prev = True
 
 if prev:
@@ -189,11 +192,11 @@ for interval in intervals:
                                                 if printCount == 100:
                                                     print(resultString)
                                                     printCount = 0
-                                                f = open("tests3.txt", "a")
+                                                f = open(testsPath, "a")
                                                 f.write(resultString)
                                                 f.close()
                                                 f = open("testprev.txt", "w")
-                                                f.write("1 " + resultString)
+                                                f.write("1 " + resultString + testsPath)
                                                 f.close()
                                                 counter += 1
 
@@ -210,7 +213,7 @@ for interval in intervals:
         VOLUME_LEVEL_OFFSET += 1
 
 f = open("testprev.txt", "w")
-f.write("0 0 0 0 0 0 0 0 0 0 0 0 0")
+f.write("0 0 0 0 0 0 0 0 0 0 0 0 0 0 0")
 f.close()
 print("Scans finished, ran {} scans.".format(counter))
 
