@@ -31,9 +31,6 @@ class Trader:
     
     def processTrade(self):
         info = self.logs.readTrade()
-        if(info[0] == "DISABLED"):
-            print("Trading disabled to stop repeating, use clear.")
-            return None
         tag = info[1]
         pattern = None
         constantsPath = ""
@@ -61,10 +58,7 @@ class Trader:
                 formatted = Logs().formatData([asset.tag, time, trade.entry, trade.stop, 
                 trade.goal, trade.currR, trade.risk])
                 self.logs.log(formatted)
-                if(tag == "pattern"):
-                    self.logs.clear()
-                else:
-                    self.logs.disable()
+                self.logs.clear()
             if processResult == True:
                 self.tryRaise(trade, time)
 
@@ -92,33 +86,91 @@ class Pattern:
 
     tag = "pattern"
 
-    def testScan(self, asset, bars, averageChange, lastBarChange, constants):
-        if lastBarChange < averageChange:
-            points = Points(bars, asset)
-            trade = points.countPoints()
+    def testScan(self, asset, bars, SARs, trends, constants):
+        c = bars.count
+        SARs, trends = bars.parabolicSAR()
+        reversal = 0
+        if trends[c - 1] == 1 and trends[c - 2] == 0 or trends[c - 3] == 0:
+            reversal = 1
+        if reversal == 1:
+            lower = bars.barAtIndex(c - 1).low
+            other = bars.barAtIndex(c - 2).low
+            if other < lower:
+                prevLower = lower
+                lower = other
+                other = prevLower
+            points = Points(bars, constants)
+            points.countPoints(lower)
             if points.score >= constants.SCORE_LEVEL and points.barScore >= constants.SCORE_LEVEL/2:
-                withCost = Simple().testEntry(trade)
-                return withCost
+                attempt = 1
+                while attempt < 4:
+                    trade = Trade(asset)
+                    if attempt == 1:
+                        trade.stop = SARs[c - 1]
+                    elif attempt == 2:
+                        trade.stop = lower
+                    elif attempt == 3:
+                        trade.stop = other
+                    trade.entry = bars.barAtIndex(c - 1).close
+                    trade.calculateRisk()
+                    trade.calculateGoal()
+                    if trade.risk > 0:
+                        trade.calculateBuyVolume()
+                        cost = trade.calculateCost()
+                        if cost <= constants.COST_HIGH and cost >= constants.COST_LOW:
+                            return trade
+                    attempt += 1
         return None
     
     def scan(self, asset, bars):
         constants = asset.constants
-        averageChange = bars.averageChange()
-        lastBar = bars.barAtIndex(bars.count - 2)
-        lastBarChange = lastBar.change
+        c = bars.count
+        SARs, trends = bars.parabolicSAR()
         print(asset.tag.upper())
         print("Interval: {}".format(asset.interval))
-        print("Average change: {}".format(averageChange))
-        print("Last bar change: {}".format(lastBarChange))
-        if lastBarChange < averageChange:
-            points = Points(bars, asset)
-            trade = points.countPoints()
+        print("Past trends: {}, {}, {}, {}, {}".format(trends[c - 1], trends[c - 2], trends[c - 3], trends[c - 4], trends[c - 5]))
+        print("Past SARs: {}, {}, {}, {}, {}".format(SARs[c - 1], SARs[c - 2], SARs[c - 3], SARs[c - 4], SARs[c - 5]))
+        reversal = 0
+        if trends[c - 1] == 1 and trends[c - 2] == 0 or trends[c - 3] == 0:
+            reversal = 1
+        if reversal == 1:
+            lower = bars.barAtIndex(c - 1).low
+            other = bars.barAtIndex(c - 2).low
+            if other < lower:
+                prevLower = lower
+                lower = other
+                other = prevLower
+            points = Points(bars, constants)
+            points.countPoints(lower)
             print("Bar score: {}".format(points.barScore))
             print("Score: {}".format(points.score))
             print("Score level: {}".format(constants.SCORE_LEVEL))
             if points.score >= constants.SCORE_LEVEL and points.barScore >= constants.SCORE_LEVEL/2:
-                withCost = Simple().simpleEntry(trade)
-                return withCost
+                attempt = 1
+                while attempt < 4:
+                    trade = Trade(asset)
+                    if attempt == 1:
+                        trade.stop = SARs[c - 1]
+                    elif attempt == 2:
+                        trade.stop = lower
+                    elif attempt == 3:
+                        trade.stop = other
+                    trade.entry = bars.barAtIndex(c - 1).close
+                    trade.calculateRisk()
+                    trade.calculateGoal()
+                    if trade.risk > 0:
+                        trade.calculateBuyVolume()
+                        cost = trade.calculateCost()
+                        if cost <= constants.COST_HIGH and cost >= constants.COST_LOW:
+                            print("Entry: {}\n".format(trade.entry))
+                            print("Stop: {}\n".format(trade.stop))
+                            print("Cost: {}".format(cost))
+                            return trade
+                    else:
+                        print("Cost was not within limits.")
+                        print("Cost: {}".format(cost))
+                        print("Risk: {}".format(trade.risk))
+                    attempt += 1
         return None
 
     def processTrade(self, trade, asset):
@@ -133,24 +185,24 @@ class Simple:
 
         print(asset.tag.upper())
         print("Interval: {}".format(asset.interval))
-        print("Attempting entry with stop at minimum of last 2 bars, with risk and cost limits preset.")
-        points = Points(bars, asset)
-        trade = points.countPoints()
+        print("Attempting entry with risk and cost limits preset.")
+        ongoingBar = bars.barAtIndex(bars.count - 1)
+        trade = Trade(asset)
+        trade.entry = ongoingBar.close
+        stopMax = trade.entry*(1 - (asset.constants.STOP/asset.constants.COST_HIGH))
+        stopMin = trade.entry*(1 - (asset.constants.STOP/asset.constants.COST_LOW))
+        print("Stop loss minimum: {}".format(stopMin))
+        print("Stop loss maximum: {}".format(stopMax))
+        prompt = input("Stop loss at: ")
+        trade.stop = float(prompt)
+        trade.calculateGoal()
+        trade.calculateRisk()
         result = self.simpleEntry(trade)
         return result
 
-    def testEntry(self, trade):
-        constants = trade.asset.constants
-        if trade.entry >= trade.trigger and trade.risk > 0:
-            trade.calculateBuyVolume()
-            cost = trade.calculateCost()
-            if cost <= constants.COST_HIGH and cost >= constants.COST_LOW:
-                return trade
-        return None
-
     def simpleEntry(self, trade):
         constants = trade.asset.constants
-        if trade.entry >= trade.trigger and trade.risk > 0:
+        if trade.risk > 0:
             trade.calculateBuyVolume()
             cost = trade.calculateCost()
             if cost <= constants.COST_HIGH and cost >= constants.COST_LOW:
@@ -162,10 +214,6 @@ class Simple:
                 print("Cost was not within limits.")
                 print("Cost: {}".format(cost))
                 print("Risk: {}".format(trade.risk))
-        else:
-            print("Entry was less than trigger.")
-            print("Entry: {}".format(trade.entry))
-            print("Trigger: {}".format(trade.trigger))
         return None
 
     def processTrade(self, trade, asset):
@@ -338,81 +386,98 @@ class Bars:
             if(stop <= high and stop >= low):
                 count += 1
         return count
-        
+
+    def parabolicSAR(self):
+        highs = list(map(lambda x: x.high, self.bars))
+        lows = list(map(lambda x: x.low, self.bars))
+        acceleration = 0.02
+        maximum = 0.2
+        trend = 1
+        length = self.count
+        prevHigh = highs[0]
+        prevLow = lows[0]
+        EP = prevHigh
+        SARs = [0]*self.count
+        SARs[0] = prevLow
+        trends = [0]*self.count
+        trends[0] = trend
+        SAR = prevLow
+        i = 1
+        while i < self.count:
+            currHigh = highs[i]
+            currLow = lows[i]
+            if trend == 1:
+                if SAR > currLow:
+                    trend = 0
+                    SAR = EP
+                    acceleration = 0.02
+                    EP = currHigh
+            elif trend == 0:
+                if SAR < currHigh:
+                    trend = 1
+                    SAR = EP
+                    acceleration = 0.02
+                    EP = currLow
+            trends[i] = trend
+            SARs[i] = SAR
+            if trend == 1:
+                if currHigh > EP:
+                    if acceleration < 0.2:
+                        acceleration += 0.02
+                    EP = currHigh
+            if trend == 0:
+                if currLow < EP:
+                    if acceleration < 0.2:
+                        acceleration += 0.02
+                    EP = currLow
+            nextSAR = SAR + acceleration*(EP - SAR)
+            if trend == 1:
+                bound = min(prevLow, currLow)
+                if nextSAR > bound:
+                    nextSAR = bound
+            if trend == 0:
+                bound = max(prevHigh, currHigh)
+                if nextSAR < bound:
+                    nextSAR = bound
+            SAR = nextSAR
+            i += 1
+            prevHigh = currHigh
+            prevLow = currLow
+        return SARs, trends
+
 
 
 
 class Points:
 
-    def __init__(self, bars, asset):
+    def __init__(self, bars, constants):
 
         self.bars = bars
-        self.asset = asset
-        self.constants = asset.constants
-        self.pattern = asset.pattern
+        self.constants = constants
         self.score = 0
         self.barScore = 0
 
-    def countPoints(self):
+    def countPoints(self, pivot):
 
-        tag = self.pattern.tag
+        i = 2
+        changeLevel = self.bars.averageChange()*self.constants.CHANGE_LEVEL
+        volumeLevel = self.bars.averageVolume()*self.constants.VOLUME_LEVEL
 
-        if(tag == "pattern"):
-            
-            ongoingBar = self.bars.barAtIndex(self.bars.count - 1)
-            trade = Trade(self.asset)
-            trade.stop = min(ongoingBar.low, self.bars.barAtIndex(self.bars.count - 2).low) 
-            trade.entry = ongoingBar.close
-            trade.trigger = ongoingBar.open + self.bars.averageChange()*self.constants.TRIGGER_BAR_LENGTHS
-
-            i = 2
-            changeLevel = self.bars.averageChange()*self.constants.CHANGE_LEVEL
-            volumeLevel = self.bars.averageVolume()*self.constants.VOLUME_LEVEL
-
-            while i < self.constants.AMOUNT_OF_BARS + 2 and i <= self.bars.count:
-                currentBar = self.bars.barAtIndex(self.bars.count - i)
-                if (currentBar.open - currentBar.close) > changeLevel:
-                    self.barScore += 1*self.constants.CHANGE_SCALE
-                if currentBar.volume > volumeLevel and currentBar.open > currentBar.close:
-                    self.barScore += 1*self.constants.VOLUME_SCALE
-                if (currentBar.close - currentBar.open) > changeLevel and i < self.bars.count:
-                    start = int(self.bars.count - i - self.constants.CHUNK_SIZE - 1)
-                    if start < 0:
-                        start = 0
-                    maxPrice = self.bars.maxPriceBetween(start, self.bars.count - i - 1)
-                    if currentBar.close < maxPrice and currentBar.open > maxPrice:
-                        distance = self.bars.averageChange()*self.constants.PIVOT_DIST_BAR_LENGTHS
-                        if trade.entry > (maxPrice - distance) and trade.entry < (maxPrice + distance): 
-                            self.barScore += 3*self.constants.CHANGE_SCALE
-                        else:
-                            self.barScore += 1*self.constants.CHANGE_SCALE         
-
+        while i < self.constants.AMOUNT_OF_BARS + 2 and i <= self.bars.count:
+            currentBar = self.bars.barAtIndex(self.bars.count - i)
+            if (currentBar.open - currentBar.close) > changeLevel:
+                self.barScore += 1*self.constants.CHANGE_SCALE
+            if currentBar.volume > volumeLevel and currentBar.open > currentBar.close:
+                self.barScore += 1*self.constants.VOLUME_SCALE
                     
 
-                i += 1
+            i += 1
             
-            distance = self.bars.averageChange()*self.constants.PIVOT_DIST_BAR_LENGTHS
-            supportW = self.bars.countPivots(self.bars.supports(self.constants.CHUNK_SIZE), trade.stop, distance)  
-            resistanceW = self.bars.countPivots(self.bars.resistances(self.constants.CHUNK_SIZE), trade.stop, distance)
-            self.score = self.barScore + (supportW*self.constants.SUPPORT_SCALE + resistanceW*self.constants.RESISTANCE_SCALE)
+        distance = self.bars.averageChange()*self.constants.PIVOT_DIST_BAR_LENGTHS
+        supportW = self.bars.countPivots(self.bars.supports(self.constants.CHUNK_SIZE), pivot, distance)  
+        resistanceW = self.bars.countPivots(self.bars.resistances(self.constants.CHUNK_SIZE), pivot, distance)
+        self.score = self.barScore + (supportW*self.constants.SUPPORT_SCALE + resistanceW*self.constants.RESISTANCE_SCALE)
 
-
-            trade.calculateRisk()
-            trade.calculateGoal()  
-
-            return trade
-
-        if(tag == "simple"):
-
-            ongoingBar = self.bars.barAtIndex(self.bars.count - 1)
-            trade = Trade(self.asset)
-            trade.stop = min(ongoingBar.low, self.bars.barAtIndex(self.bars.count - 2).low) 
-            trade.entry = ongoingBar.close
-            trade.trigger = ongoingBar.open + self.bars.averageChange()*self.constants.TRIGGER_BAR_LENGTHS
-
-            trade.calculateRisk()
-            trade.calculateGoal()
-            return trade
 
     def resetPoints(self):
         self.score = 0
@@ -426,7 +491,6 @@ class Trade:
         self.entry = 0
         self.goal = 0
         self.risk = 0
-        self.trigger = 0
         self.buyVolume = 0
         self.cost = 0
         self.asset = asset

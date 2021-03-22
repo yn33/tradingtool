@@ -27,7 +27,6 @@ class Constants:
         self.STOP = float(array[11])
         self.COST_HIGH = float(array[12])
         self.COST_LOW = float(array[13])
-        self.TRIGGER_BAR_LENGTHS = float(array[14])
     
     def getArray(self):
         array = [self.VOLUME_LEVEL, self.CHANGE_LEVEL, self.SCORE_LEVEL,
@@ -52,3 +51,4 @@ class Paths:
         self.TEST_CONSTANTS_PATH = array[5]
         self.PATTERN_CONSTANTS_PATH = array[6]
         self.SIMPLE_CONSTANTS_PATH = array[7]
+        self.TESTPREV_PATH = array[8]

@@ -3,11 +3,7 @@ kraken-workspace.code-workspace
 python/data.txt
 python/log.txt
 python/paths.txt
-python/scraps.txt
-python/testprev.txt
-python/tests.txt
-python/tests2.txt
-python/tests3.txt
+python/tests
 php/.vscode
 php/data.txt
 php/keys.txt

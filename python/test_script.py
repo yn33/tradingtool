@@ -11,18 +11,20 @@ php.TEST_MODE = True
 paths = Paths("paths.txt")
 php.setPaths(paths)
 constantsPath = paths.TEST_CONSTANTS_PATH
+testprevPath = paths.TESTPREV_PATH
 testsPath = sys.argv[1]
 intervals = [15]
 pattern = Trading.Pattern()
 counter = 0
 prev = False
 
-def runScan(asset, barsArray, reverseArray, avgChanges, lastBarChanges, constants):
+def runScan(asset, barsArray, reverseArray, SARArray, trendsArray, constants):
     totalR = 0
     count = 0
+    trades = 0
     while count < len(barData) - 2:
         bars = barsArray[count]
-        scanResult = asset.pattern.testScan(asset, bars, avgChanges[count], lastBarChanges[count], constants)
+        scanResult = asset.pattern.testScan(asset, bars, SARArray[count], trendsArray[count], constants)
         if scanResult != None:
             stop = scanResult.stop
             goal = scanResult.goal
@@ -36,15 +38,19 @@ def runScan(asset, barsArray, reverseArray, avgChanges, lastBarChanges, constant
                 if currLow <= stop:
                     currR = currR - (0.026*entry)/risk - (0.026*stop)/risk
                     totalR += currR
+                    trades += 1
                     break
                 elif currLow >= goal:
                     oldGoal = goal
                     goal = goal + risk
                     stop = oldGoal
-        count += 1    
-    return totalR
+        count += 1
+    average = 0
+    if trades > 0:    
+        average = totalR/trades
+    return average
     
-f = open("testprev.txt", "r")
+f = open(testprevPath, "r")
 line = f.read()
 f.close()
 array = line.split()
@@ -59,8 +65,7 @@ PREV_CSCALE = float(array[8])
 PREV_VSCALE = float(array[9])
 PREV_SUPP = float(array[10])
 PREV_RES = float(array[11])
-PREV_TRIGGER = float(array[12])
-PREV_TESTPATH = array[14]
+PREV_TESTPATH = array[12]
 
 if array[0] == "1" and PREV_TESTPATH == testsPath:
     print("Setting previous values.")
@@ -73,24 +78,22 @@ if prev:
         intervals.pop(0)
 
 for interval in intervals:
+    printCount = 99
     asset = Trading.Asset(tag, pattern, interval, php, constantsPath)
     barData = php.getOHLC(asset)
     i = 2
     barsArray = []
     reverseArray = []
-    avgChanges = []
-    lastBarChanges = []
-    printCount = 99
+    SARArray = []
+    trendsArray = []
     while i < len(barData):
         bars1 = Trading.Bars(barData[:i])
         bars2 = Trading.Bars(barData[i:])
+        SARs, trends = bars1.parabolicSAR()
         barsArray.append(bars1)
         reverseArray.append(bars2)
-        averageChange = bars1.averageChange()
-        lastBar = bars1.barAtIndex(bars1.count - 2)
-        lastBarChange = lastBar.change
-        avgChanges.append(averageChange)
-        lastBarChanges.append(lastBarChange)
+        SARArray.append(SARs)
+        trendsArray.append(trends)
         i += 1
 
     VOLUME_LEVEL = asset.constants.VOLUME_LEVEL
@@ -103,7 +106,6 @@ for interval in intervals:
     VOLUME_SCALE = asset.constants.VOLUME_SCALE
     SUPPORT_SCALE = asset.constants.SUPPORT_SCALE
     RESISTANCE_SCALE = asset.constants.RESISTANCE_SCALE
-    TRIGGER_BAR_LENGTHS = asset.constants.TRIGGER_BAR_LENGTHS
 
     PREV_VOLUME = PREV_VOLUME - VOLUME_LEVEL
     PREV_CHANGE = PREV_CHANGE - CHANGE_LEVEL
@@ -115,27 +117,26 @@ for interval in intervals:
     PREV_VSCALE = PREV_VSCALE - VOLUME_SCALE
     PREV_SUPP = PREV_SUPP - SUPPORT_SCALE
     PREV_RES = PREV_RES - RESISTANCE_SCALE
-    PREV_TRIGGER = PREV_TRIGGER - TRIGGER_BAR_LENGTHS + 0.1
 
-    VOLUME_LEVEL_OFFSET = -1.0
+    VOLUME_LEVEL_OFFSET = 0.0
     if prev:
         VOLUME_LEVEL_OFFSET = PREV_VOLUME
-    while VOLUME_LEVEL_OFFSET <= 4.0:
+    while VOLUME_LEVEL_OFFSET <= 5.0:
         asset.constants.VOLUME_LEVEL = VOLUME_LEVEL + VOLUME_LEVEL_OFFSET
-        CHANGE_LEVEL_OFFSET = -1.0
+        CHANGE_LEVEL_OFFSET = 0.0
         if prev:
             CHANGE_LEVEL_OFFSET = PREV_CHANGE
-        while CHANGE_LEVEL_OFFSET <= 4.0:
+        while CHANGE_LEVEL_OFFSET <= 5.0:
             asset.constants.CHANGE_LEVEL = CHANGE_LEVEL + CHANGE_LEVEL_OFFSET
-            SCORE_LEVEL_OFFSET = -4.0
+            SCORE_LEVEL_OFFSET = 0.0
             if prev:
                 SCORE_LEVEL_OFFSET = PREV_SCORE
-            while SCORE_LEVEL_OFFSET <= 10.0:
+            while SCORE_LEVEL_OFFSET <= 18.0:
                 asset.constants.SCORE_LEVEL = SCORE_LEVEL + SCORE_LEVEL_OFFSET
-                AMOUNT_OF_BARS_OFFSET = -3.0
+                AMOUNT_OF_BARS_OFFSET = 0.0
                 if prev:
                     AMOUNT_OF_BARS_OFFSET = PREV_AMOUNT
-                while AMOUNT_OF_BARS_OFFSET <= 10.0:
+                while AMOUNT_OF_BARS_OFFSET <= 15.0:
                     asset.constants.AMOUNT_OF_BARS = AMOUNT_OF_BARS + AMOUNT_OF_BARS_OFFSET
                     CHUNK_SIZE_OFFSET = 0.0
                     if prev:
@@ -147,15 +148,15 @@ for interval in intervals:
                             PIVOT_DIST_OFFSET = PREV_PIVOT
                         while PIVOT_DIST_OFFSET <= 0.0:
                             asset.constants.PIVOT_DIST_BAR_LENGTHS = PIVOT_DIST_BAR_LENGTHS + PIVOT_DIST_OFFSET
-                            CHANGE_SCALE_OFFSET = -0.5
+                            CHANGE_SCALE_OFFSET = 0.0
                             if prev:
                                 CHANGE_SCALE_OFFSET = PREV_CSCALE
-                            while CHANGE_SCALE_OFFSET <= 0.5:
+                            while CHANGE_SCALE_OFFSET <= 1.0:
                                 asset.constants.CHANGE_SCALE = CHANGE_SCALE + CHANGE_SCALE_OFFSET
-                                VOLUME_SCALE_OFFSET = -0.5
+                                VOLUME_SCALE_OFFSET = 0.0
                                 if prev:
                                     VOLUME_SCALE_OFFSET = PREV_VSCALE
-                                while VOLUME_SCALE_OFFSET <= 0.5:
+                                while VOLUME_SCALE_OFFSET <= 1.0:
                                     asset.constants.VOLUME_SCALE = VOLUME_SCALE + VOLUME_SCALE_OFFSET
                                     SUPPORT_SCALE_OFFSET = 0.0
                                     if prev:
@@ -167,40 +168,33 @@ for interval in intervals:
                                             RESISTANCE_SCALE_OFFSET = PREV_RES
                                         while RESISTANCE_SCALE_OFFSET <= 0.0:
                                             asset.constants.RESISTANCE_SCALE = RESISTANCE_SCALE + RESISTANCE_SCALE_OFFSET
-                                            TRIGGER_BAR_LENGTHS_OFFSET = -0.1
-                                            if prev:
-                                                TRIGGER_BAR_LENGTHS_OFFSET = PREV_TRIGGER
-                                                prev = False
-                                            while TRIGGER_BAR_LENGTHS_OFFSET <= 0.6:
-                                                asset.constants.TRIGGER_BAR_LENGTHS = TRIGGER_BAR_LENGTHS + TRIGGER_BAR_LENGTHS_OFFSET
-                                                result = runScan(asset, barsArray, reverseArray, avgChanges, lastBarChanges, asset.constants)
-                                                resultString = "{} {} {} {} {} {} {} {} {} {} {} {} {}\n".format(
-                                                    interval,
-                                                    asset.constants.VOLUME_LEVEL,
-                                                    asset.constants.CHANGE_LEVEL,
-                                                    asset.constants.SCORE_LEVEL,
-                                                    asset.constants.AMOUNT_OF_BARS,
-                                                    asset.constants.CHUNK_SIZE,
-                                                    asset.constants.PIVOT_DIST_BAR_LENGTHS,
-                                                    asset.constants.CHANGE_SCALE,
-                                                    asset.constants.VOLUME_SCALE,
-                                                    asset.constants.SUPPORT_SCALE,
-                                                    asset.constants.RESISTANCE_SCALE,
-                                                    asset.constants.TRIGGER_BAR_LENGTHS,
-                                                    result)
-                                                printCount += 1
-                                                if printCount == 100:
-                                                    print(resultString)
-                                                    printCount = 0
-                                                f = open(testsPath, "a")
-                                                f.write(resultString)
-                                                f.close()
-                                                f = open("testprev.txt", "w")
-                                                f.write("1 " + resultString + testsPath)
-                                                f.close()
-                                                counter += 1
+                                        
+                                            result = runScan(asset, barsArray, reverseArray, SARArray, trendsArray, asset.constants)
+                                            resultString = "{} {} {} {} {} {} {} {} {} {} {} {} ".format(
+                                            interval,
+                                            asset.constants.VOLUME_LEVEL,
+                                            asset.constants.CHANGE_LEVEL,
+                                            asset.constants.SCORE_LEVEL,
+                                            asset.constants.AMOUNT_OF_BARS,
+                                            asset.constants.CHUNK_SIZE,
+                                            asset.constants.PIVOT_DIST_BAR_LENGTHS,
+                                            asset.constants.CHANGE_SCALE,
+                                            asset.constants.VOLUME_SCALE,
+                                            asset.constants.SUPPORT_SCALE,
+                                            asset.constants.RESISTANCE_SCALE,
+                                            result)
+                                            printCount += 1
+                                            if printCount == 100:
+                                                print(resultString)
+                                                printCount = 0
+                                            f = open(testsPath, "a")
+                                            f.write(resultString)
+                                            f.close()
+                                            f = open(testprevPath, "w")
+                                            f.write("1 " + resultString + testsPath)
+                                            f.close()
+                                            counter += 1
 
-                                                TRIGGER_BAR_LENGTHS_OFFSET += 0.1
                                             RESISTANCE_SCALE_OFFSET += 0.5
                                         SUPPORT_SCALE_OFFSET += 0.5
                                     VOLUME_SCALE_OFFSET += 0.5
@@ -212,8 +206,8 @@ for interval in intervals:
             CHANGE_LEVEL_OFFSET += 1
         VOLUME_LEVEL_OFFSET += 1
 
-f = open("testprev.txt", "w")
-f.write("0 0 0 0 0 0 0 0 0 0 0 0 0 0 0")
+f = open(testprevPath, "w")
+f.write("0 0 0 0 0 0 0 0 0 0 0 0 0 0")
 f.close()
 print("Scans finished, ran {} scans.".format(counter))
 

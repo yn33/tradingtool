@@ -50,7 +50,7 @@ foreach($argv as $arg) {
 if($interval != 0 && $assetPair != "") {
     getOHLC($assetPair, $interval);
 } else if($enter && $assetPair != "") {
-    $i = len($argv) - 3;
+    $i = count($argv) - 3;
     $curr = $argv[$i];
     if($curr == 'enter') {
         $stop = floatval($argv[$i + 1]);
@@ -58,7 +58,7 @@ if($interval != 0 && $assetPair != "") {
         entry($assetPair, $stop, $buyVolume);
     }
 } else if($goal && $assetPair != "") {
-    $i = len($argv) - 3;
+    $i = count($argv) - 3;
     $curr = $argv[$i];
     if($curr == 'goal') {
         $stop = floatval($argv[$i + 1]);

@@ -433,7 +433,7 @@ function tradeBalance() {
 }       
 
 function entry($assetPair, $stop, $buyVolume) {
-    $txid = array();
+    global $kraken;
     $orders = $kraken->QueryPrivate('OpenOrders', array('trades' => true));
     $ordersArray = $orders['result']['open'];
     if(count($ordersArray) == 0) {
@@ -451,13 +451,14 @@ function entry($assetPair, $stop, $buyVolume) {
             $output = "ERR " . $error[0];
         } else {
             $txid = $order['result']['txid'];
-            $output = "OK " . $txid;
+            $output = "OK " . $txid[0];
         }
         fwrite(STDOUT, json_encode($output));
     }
 }
 
 function raiseStop($assetPair, $goal, $sellVolume) {
+    global $kraken;
     $cancel = $kraken->QueryPrivate('CancelAll');
     if($cancel > 0) {
         $order = $kraken->QueryPrivate('AddOrder', array(
@@ -473,7 +474,7 @@ function raiseStop($assetPair, $goal, $sellVolume) {
             fwrite(STDOUT, json_encode($output));
         } else {
             $txid = $order['result']['txid'];
-            $output = "OK " . $txid;
+            $output = "OK " . $txid[0];
             fwrite(STDOUT, json_encode($output));
         }
     }
