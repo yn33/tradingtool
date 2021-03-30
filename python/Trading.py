@@ -63,7 +63,7 @@ class Trader:
                 self.tryRaise(trade, time)
 
     def tryRaise(self, trade, time):
-        result = self.php.raiseStop(trade.asset, trade.stop, trade.buyVolume)
+        result = self.php.raiseStop(trade.asset.tag, trade.stop, trade.buyVolume)
         if result:
             self.logs.logTrade(trade, time)
             
@@ -88,9 +88,8 @@ class Pattern:
 
     def testScan(self, asset, bars, SARs, trends, constants):
         c = bars.count
-        SARs, trends = bars.parabolicSAR()
         reversal = 0
-        if trends[c - 1] == 1 and trends[c - 2] == 0 or trends[c - 3] == 0:
+        if trends[c - 1] == 1 and (trends[c - 2] == 0 or trends[c - 3] == 0):
             reversal = 1
         if reversal == 1:
             lower = bars.barAtIndex(c - 1).low
@@ -113,8 +112,8 @@ class Pattern:
                         trade.stop = other
                     trade.entry = bars.barAtIndex(c - 1).close
                     trade.calculateRisk()
-                    trade.calculateGoal()
                     if trade.risk > 0:
+                        trade.calculateGoal()
                         trade.calculateBuyVolume()
                         cost = trade.calculateCost()
                         if cost <= constants.COST_HIGH and cost >= constants.COST_LOW:
@@ -131,7 +130,7 @@ class Pattern:
         print("Past trends: {}, {}, {}, {}, {}".format(trends[c - 1], trends[c - 2], trends[c - 3], trends[c - 4], trends[c - 5]))
         print("Past SARs: {}, {}, {}, {}, {}".format(SARs[c - 1], SARs[c - 2], SARs[c - 3], SARs[c - 4], SARs[c - 5]))
         reversal = 0
-        if trends[c - 1] == 1 and trends[c - 2] == 0 or trends[c - 3] == 0:
+        if trends[c - 1] == 1 and (trends[c - 2] == 0 or trends[c - 3] == 0):
             reversal = 1
         if reversal == 1:
             lower = bars.barAtIndex(c - 1).low
@@ -157,8 +156,8 @@ class Pattern:
                         trade.stop = other
                     trade.entry = bars.barAtIndex(c - 1).close
                     trade.calculateRisk()
-                    trade.calculateGoal()
                     if trade.risk > 0:
+                        trade.calculateGoal()
                         trade.calculateBuyVolume()
                         cost = trade.calculateCost()
                         if cost <= constants.COST_HIGH and cost >= constants.COST_LOW:
@@ -195,8 +194,8 @@ class Simple:
         print("Stop loss maximum: {}".format(stopMax))
         prompt = input("Stop loss at: ")
         trade.stop = float(prompt)
-        trade.calculateGoal()
         trade.calculateRisk()
+        trade.calculateGoal()
         result = self.simpleEntry(trade)
         return result
 
@@ -206,8 +205,9 @@ class Simple:
             trade.calculateBuyVolume()
             cost = trade.calculateCost()
             if cost <= constants.COST_HIGH and cost >= constants.COST_LOW:
-                print("Entry: {}\n".format(trade.entry))
-                print("Stop: {}\n".format(trade.stop))
+                print("Entry: {}".format(trade.entry))
+                print("Stop: {}".format(trade.stop))
+                print("Goal: {}".format(trade.goal))
                 print("Cost: {}".format(cost))
                 return trade
             else:
@@ -497,23 +497,32 @@ class Trade:
         self.currR = 0
     
     def calculateRisk(self):
-        self.risk = self.entry - self.stop
+        if self.entry > 0 and self.stop > 0: 
+            self.risk = self.entry - self.stop
+        else:
+            print("calculateRisk error")
         return self.risk
     
     def calculateBuyVolume(self):
         if self.risk > 0:
             self.buyVolume = self.asset.constants.STOP/self.risk
+        else:
+            print("calculateBuyVolume error")
         return self.buyVolume
     
     def calculateCost(self):
         if self.buyVolume > 0 and self.entry > 0:
             self.cost = self.entry*self.buyVolume
+        else:
+            print("calculateCost error")
         return self.cost 
     
     def calculateGoal(self):
         if self.risk > 0 and self.entry > 0:
             self.goal = self.entry + 2*self.risk
             self.roundGoal(self.asset.tag)
+        else:
+            print("calculateGoal error")
         return self.goal
 
     def roundGoal(self, tag):
@@ -525,10 +534,15 @@ class Trade:
             self.goal == round(self.goal, 5)
 
     def buyFee(self):
-        return 0.026*self.entry
+        if self.buyVolume == 0:
+            print("buyFee error")
+        return 0.026*(self.entry*self.buyVolume)
     
     def sellFee(self):
-        return 0.026*self.stop
+        if self.buyVolume == 0:
+            print("sellFee error")
+            return 0
+        return 0.026*(self.stop*self.buyVolume)
 
 
 

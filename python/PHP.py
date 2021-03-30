@@ -61,6 +61,7 @@ class PHP:
             secret = f.readline().rstrip('\n')
             f.close()
             output = subprocess.run([self.paths.PHP_PATH, self.paths.KRAKEN_PATH, key, secret, str(assetTag), 'goal', str(stop), str(sellVolume)], capture_output=True, text=True).stdout
+            print(output)
             result = json.loads(output).split()
             if result[0] == "OK":
                 return True

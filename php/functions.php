@@ -460,23 +460,21 @@ function entry($assetPair, $stop, $buyVolume) {
 function raiseStop($assetPair, $goal, $sellVolume) {
     global $kraken;
     $cancel = $kraken->QueryPrivate('CancelAll');
-    if($cancel > 0) {
-        $order = $kraken->QueryPrivate('AddOrder', array(
-            'pair' => $assetPair, 
-            'type' => 'sell', 
-            'ordertype' => 'stop-loss', 
-            'volume' => $sellVolume,
-            'price' => $goal
-        ));
-        $error = $order['error'];
-        if(count($error) > 0) {
-            $output = "ERR " . $error[0];
-            fwrite(STDOUT, json_encode($output));
-        } else {
-            $txid = $order['result']['txid'];
-            $output = "OK " . $txid[0];
-            fwrite(STDOUT, json_encode($output));
-        }
+    $order = $kraken->QueryPrivate('AddOrder', array(
+        'pair' => $assetPair, 
+        'type' => 'sell', 
+        'ordertype' => 'stop-loss', 
+        'volume' => $sellVolume,
+        'price' => $goal
+    ));
+    $error = $order['error'];
+    if(count($error) > 0) {
+        $output = "ERR " . $error[0];
+        fwrite(STDOUT, json_encode($output));
+    } else {
+        $txid = $order['result']['txid'];
+        $output = "OK " . $txid[0];
+        fwrite(STDOUT, json_encode($output));
     }
 }
 
