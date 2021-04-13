@@ -22,7 +22,6 @@ def runScan(asset, barsArray, reverseArray, SARArray, trendsArray, constants, da
             remaining = reverseArray[count]
             for bar in remaining.bars:
                 currLow = bar.low
-                currHigh = bar.high
                 currR = (currLow - entry)/risk    
                 if currLow <= stop:
                     currR = currR - (0.026*(entry*buyVolume))/risk - (0.026*(stop*buyVolume))/risk

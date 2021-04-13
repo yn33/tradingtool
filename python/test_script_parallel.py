@@ -25,7 +25,6 @@ def runScan(asset, barsArray, reverseArray, SARArray, trendsArray, constants, da
             remaining = reverseArray[count]
             for bar in remaining.bars:
                 currLow = bar.low
-                currHigh = bar.high
                 currR = (currLow - entry)/risk    
                 if currLow <= stop:
                     currR = currR - (0.026*(entry*buyVolume))/risk - (0.026*(stop*buyVolume))/risk
@@ -54,7 +53,6 @@ def main():
     testsPath = sys.argv[1]
     intervals = [15]
     pattern = Trading.Pattern()
-    prev = False
     cpucount = mp.cpu_count()
     print("Number of processors used: ", cpucount)
 
@@ -69,17 +67,19 @@ def main():
         reverseArray = []
         SARArray = []
         trendsArray = []
-        maxOffset = 5.0
-        offsetChange = 1.0
-        partitionSize = math.ceil((int(maxOffset/offsetChange + 1))/cpucount)
+        maxOffsetV = 5.0
+        offsetChangeV = 1.0
+        maxOffsetC = 7.0
+        offsetChangeC = 1.0
+        partitionSize = math.ceil((int(maxOffsetC/offsetChangeC + 1))/cpucount)
         r = []
         i = 0
         while i < cpucount:
             j = 0
             partition = []
             while j < partitionSize:
-                if (j + i*partitionSize)*offsetChange <= maxOffset:
-                    partition.append((j + i*partitionSize)*offsetChange)
+                if (j + i*partitionSize)*offsetChangeC <= maxOffsetC:
+                    partition.append((j + i*partitionSize)*offsetChangeC)
                 j += 1
             if len(partition) > 0:
                 r.append(partition)
@@ -87,10 +87,10 @@ def main():
         checkSum = 0
         for x in r:
             checkSum += len(x)
-        if checkSum != int(maxOffset/offsetChange + 1):
+        if checkSum != int(maxOffsetC/offsetChangeC + 1):
             print("Partition error.")    
             print(checkSum)
-            print(int(maxOffset/offsetChange + 1))
+            print(int(maxOffsetC/offsetChangeC + 1))
             exit()
         i = 2
         while i < len(barData):
@@ -102,29 +102,49 @@ def main():
             SARArray.append(SARs)
             trendsArray.append(trends)
             i += 1
+        f = open(testprevPath, "r")
+        line = f.read()
+        f.close()
+        array = line.split()
+        if len(array) != 1:
+            print("Testprev file error.")
+            exit()
         print("Initialized.")
         print("Starting tests.")
-        q = mp.Queue()
-        for partition in r:
-            printStr = "Starting partition with volume offsets:"
-            for x in partition:
-                printStr = printStr + " {}".format(x)
-            print(printStr)
-            p = mp.Process(target=runPartition, args=(partition, asset, interval, q, constantsPath, barsArray, reverseArray, SARArray, trendsArray, dataLen))
-            p.start()
-        for partition in r:
-            p.join()
-        print("All partitions finished. Writing results to file.")
-        testf = open(testsPath, "a")
-        while not q.empty():
-            testf.write(q.get())
-        testf.close()
+        volumeOffset = float(array[0])
+        print("Starting with volume offset {}".format(volumeOffset))
+        while volumeOffset <= maxOffsetV:
+            q = mp.Queue()
+            jobs = []
+            for partition in r:
+                printStr = "Starting partition with volume offset {} and change offsets:".format(volumeOffset)
+                for x in partition:
+                    printStr = printStr + " {}".format(x)
+                print(printStr)
+                p = mp.Process(target=runPartition, args=(volumeOffset, partition, asset, interval, q, constantsPath, barsArray, reverseArray, SARArray, trendsArray, dataLen))
+                p.start()
+                jobs.append(p)
+            testf = open(testsPath, "a")
+            for job in jobs:
+                while job.is_alive():
+                    while not q.empty():
+                        testf.write(q.get())
+            testf.close()
+            print("All partitions finished for this volume offset, results written to file.")
+            volumeOffset += offsetChangeV
+            f = open(testprevPath, "w")
+            f.write(str(volumeOffset))
+            f.close()
+        f = open(testprevPath, "w")
+        f.write("0.0")
+        f.close()
+    
 
-def runPartition(partition, asset, interval, q, constantsPath, barsArray, reverseArray, SARArray, trendsArray, dataLen):
+def runPartition(volumeOffset, partition, asset, interval, q, constantsPath, barsArray, reverseArray, SARArray, trendsArray, dataLen):
     for x in partition:
-        runTest(x, asset, interval, q, constantsPath, barsArray, reverseArray, SARArray, trendsArray, dataLen)
+        runTest(volumeOffset, x, asset, interval, q, constantsPath, barsArray, reverseArray, SARArray, trendsArray, dataLen)
         
-def runTest(VOLUME_LEVEL_OFFSET, asset, interval, q, constantsPath, barsArray, reverseArray, SARArray, trendsArray, dataLen):
+def runTest(VOLUME_LEVEL_OFFSET, CHANGE_LEVEL_OFFSET, asset, interval, q, constantsPath, barsArray, reverseArray, SARArray, trendsArray, dataLen):
 
     printCount = 999
     counter = 0
@@ -138,67 +158,64 @@ def runTest(VOLUME_LEVEL_OFFSET, asset, interval, q, constantsPath, barsArray, r
     CHANGE_SCALE = constants.CHANGE_SCALE
     VOLUME_SCALE = constants.VOLUME_SCALE
     SUPPORT_SCALE = constants.SUPPORT_SCALE
-    RESISTANCE_SCALE = constants.RESISTANCE_SCALE
+    RESISTANCE_SCALE = constants.RESISTANCE_SCALE 
 
     constants.VOLUME_LEVEL = VOLUME_LEVEL + VOLUME_LEVEL_OFFSET
-    CHANGE_LEVEL_OFFSET = 0.0
-    while CHANGE_LEVEL_OFFSET <= 5.0:
-        constants.CHANGE_LEVEL = CHANGE_LEVEL + CHANGE_LEVEL_OFFSET
-        SCORE_LEVEL_OFFSET = 0.0
-        while SCORE_LEVEL_OFFSET <= 10.0:
-            constants.SCORE_LEVEL = SCORE_LEVEL + SCORE_LEVEL_OFFSET
-            AMOUNT_OF_BARS_OFFSET = 0.0
-            while AMOUNT_OF_BARS_OFFSET <= 10.0:
-                constants.AMOUNT_OF_BARS = AMOUNT_OF_BARS + AMOUNT_OF_BARS_OFFSET
-                CHUNK_SIZE_OFFSET = 0.0
-                while CHUNK_SIZE_OFFSET <= 0.0:
-                    constants.CHUNK_SIZE = CHUNK_SIZE + CHUNK_SIZE_OFFSET
-                    PIVOT_DIST_OFFSET = 0.0
-                    while PIVOT_DIST_OFFSET <= 1.0:
-                        constants.PIVOT_DIST_BAR_LENGTHS = PIVOT_DIST_BAR_LENGTHS + PIVOT_DIST_OFFSET
-                        CHANGE_SCALE_OFFSET = 0.0
-                        while CHANGE_SCALE_OFFSET <= 2.0:
-                            constants.CHANGE_SCALE = CHANGE_SCALE + CHANGE_SCALE_OFFSET
-                            VOLUME_SCALE_OFFSET = 0.0
-                            while VOLUME_SCALE_OFFSET <= 2.0:
-                                constants.VOLUME_SCALE = VOLUME_SCALE + VOLUME_SCALE_OFFSET
-                                SUPPORT_SCALE_OFFSET = 0.0
-                                while SUPPORT_SCALE_OFFSET <= 2.0:
-                                    constants.SUPPORT_SCALE = SUPPORT_SCALE + SUPPORT_SCALE_OFFSET
-                                    RESISTANCE_SCALE_OFFSET = 0.0
-                                    while RESISTANCE_SCALE_OFFSET <= 2.0:
-                                        constants.RESISTANCE_SCALE = RESISTANCE_SCALE + RESISTANCE_SCALE_OFFSET
+    constants.CHANGE_LEVEL = CHANGE_LEVEL + CHANGE_LEVEL_OFFSET
+    SCORE_LEVEL_OFFSET = 0.0
+    while SCORE_LEVEL_OFFSET <= 10.0:
+        constants.SCORE_LEVEL = SCORE_LEVEL + SCORE_LEVEL_OFFSET
+        AMOUNT_OF_BARS_OFFSET = 0.0
+        while AMOUNT_OF_BARS_OFFSET <= 10.0:
+            constants.AMOUNT_OF_BARS = AMOUNT_OF_BARS + AMOUNT_OF_BARS_OFFSET
+            CHUNK_SIZE_OFFSET = 0.0
+            while CHUNK_SIZE_OFFSET <= 0.0:
+                constants.CHUNK_SIZE = CHUNK_SIZE + CHUNK_SIZE_OFFSET
+                PIVOT_DIST_OFFSET = 0.0
+                while PIVOT_DIST_OFFSET <= 1.0:
+                    constants.PIVOT_DIST_BAR_LENGTHS = PIVOT_DIST_BAR_LENGTHS + PIVOT_DIST_OFFSET
+                    CHANGE_SCALE_OFFSET = 0.0
+                    while CHANGE_SCALE_OFFSET <= 2.0:
+                        constants.CHANGE_SCALE = CHANGE_SCALE + CHANGE_SCALE_OFFSET
+                        VOLUME_SCALE_OFFSET = 0.0
+                        while VOLUME_SCALE_OFFSET <= 2.0:
+                            constants.VOLUME_SCALE = VOLUME_SCALE + VOLUME_SCALE_OFFSET
+                            SUPPORT_SCALE_OFFSET = 0.0
+                            while SUPPORT_SCALE_OFFSET <= 2.0:
+                                constants.SUPPORT_SCALE = SUPPORT_SCALE + SUPPORT_SCALE_OFFSET
+                                RESISTANCE_SCALE_OFFSET = 0.0
+                                while RESISTANCE_SCALE_OFFSET <= 2.0:
+                                    constants.RESISTANCE_SCALE = RESISTANCE_SCALE + RESISTANCE_SCALE_OFFSET
                                             
-                                        result = runScan(asset, barsArray, reverseArray, SARArray, trendsArray, constants, dataLen)
-                                        resultString = "{} {} {} {} {} {} {} {} {} {} {} {} ".format(
-                                        interval,
-                                        constants.VOLUME_LEVEL,
-                                        constants.CHANGE_LEVEL,
-                                        constants.SCORE_LEVEL,
-                                        constants.AMOUNT_OF_BARS,
-                                        constants.CHUNK_SIZE,
-                                        constants.PIVOT_DIST_BAR_LENGTHS,
-                                        constants.CHANGE_SCALE,
-                                        constants.VOLUME_SCALE,
-                                        constants.SUPPORT_SCALE,
-                                        constants.RESISTANCE_SCALE,
-                                        result)
-                                        printCount += 1
-                                        if printCount == 1000:
-                                            print(resultString)
-                                            printCount = 0
-                                        q.put(resultString + '\n')
-                                        counter += 1
+                                    result = runScan(asset, barsArray, reverseArray, SARArray, trendsArray, constants, dataLen)
+                                    resultString = "{} {} {} {} {} {} {} {} {} {} {} {} ".format(
+                                    interval,
+                                    constants.VOLUME_LEVEL,
+                                    constants.CHANGE_LEVEL,
+                                    constants.SCORE_LEVEL,
+                                    constants.AMOUNT_OF_BARS,
+                                    constants.CHUNK_SIZE,
+                                    constants.PIVOT_DIST_BAR_LENGTHS,
+                                    constants.CHANGE_SCALE,
+                                    constants.VOLUME_SCALE,
+                                    constants.SUPPORT_SCALE,
+                                    constants.RESISTANCE_SCALE,
+                                    result)
+                                    printCount += 1
+                                    if printCount == 1000:
+                                        print(resultString)
+                                        printCount = 0
+                                    q.put(resultString + '\n')
+                                    counter += 1
 
-                                        RESISTANCE_SCALE_OFFSET += 0.5
-                                    SUPPORT_SCALE_OFFSET += 0.5
-                                VOLUME_SCALE_OFFSET += 0.5
-                            CHANGE_SCALE_OFFSET += 0.5
-                        PIVOT_DIST_OFFSET += 0.5
-                    CHUNK_SIZE_OFFSET += 5
-                AMOUNT_OF_BARS_OFFSET += 1
-            SCORE_LEVEL_OFFSET += 1
-        CHANGE_LEVEL_OFFSET += 1
+                                    RESISTANCE_SCALE_OFFSET += 0.5
+                                SUPPORT_SCALE_OFFSET += 0.5
+                            VOLUME_SCALE_OFFSET += 0.5
+                        CHANGE_SCALE_OFFSET += 0.5
+                    PIVOT_DIST_OFFSET += 0.5
+                CHUNK_SIZE_OFFSET += 5
+            AMOUNT_OF_BARS_OFFSET += 1
+        SCORE_LEVEL_OFFSET += 1
     print("Scans finished, ran {} scans.".format(counter))
 
 if __name__ == '__main__':
