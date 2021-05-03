@@ -114,6 +114,10 @@ def main():
         volumeOffset = float(array[0])
         print("Starting with volume offset {}".format(volumeOffset))
         while volumeOffset <= maxOffsetV:
+            volumeOffset += offsetChangeV
+            f = open(testprevPath, "w")
+            f.write(str(volumeOffset))
+            f.close()
             q = mp.Queue()
             jobs = []
             for partition in r:
@@ -131,10 +135,6 @@ def main():
                         testf.write(q.get())
             testf.close()
             print("All partitions finished for this volume offset, results written to file.")
-            volumeOffset += offsetChangeV
-            f = open(testprevPath, "w")
-            f.write(str(volumeOffset))
-            f.close()
         f = open(testprevPath, "w")
         f.write("0.0")
         f.close()

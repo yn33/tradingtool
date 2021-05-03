@@ -21,7 +21,7 @@ class PHP:
         secret = f.readline().rstrip('\n')
         f.close()
 
-        output = subprocess.run([self.paths.PHP_PATH, self.paths.KRAKEN_PATH, key, secret, str(asset.tag), str(asset.interval)], capture_output=True, text=True).stdout
+        output = subprocess.run([self.paths.PHP_PATH, self.paths.KRAKEN_PATH, key, secret, str(asset.tag), str(asset.interval)], capture_output=True, text=True, check=True).stdout
         array = json.loads(output)
         return array
     
