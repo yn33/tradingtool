@@ -108,9 +108,6 @@ def main():
         print("Starting with volume offset {}".format(volumeOffset))
         while volumeOffset <= maxOffsetV:
             volumeOffset += offsetChangeV
-            f = open(testprevPath, "w")
-            f.write(str(volumeOffset))
-            f.close()
             q = mp.Queue()
             jobs = []
             for partition in r:

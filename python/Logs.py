@@ -13,7 +13,7 @@ class Logs:
             return None
         f = open(self.paths.DATA_PATH, "w")
         f.write("{}\n".format(trade.asset.tag))
-        f.write("{}\n".format(trade.asset.pattern.tag))
+        f.write("{}\n".format(trade.pattern.tag))
         f.write("{}\n".format(trade.asset.interval))
         f.write("{}\n".format(time))
         f.write("{}\n".format(trade.entry))

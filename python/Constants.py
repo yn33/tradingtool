@@ -49,6 +49,6 @@ class Paths:
         self.KRAKEN_PATH = array[3]
         self.KEYS_PATH = array[4]
         self.TEST_CONSTANTS_PATH = array[5]
-        self.PATTERN_CONSTANTS_PATH = array[6]
+        self.PARABOLIC_CONSTANTS_PATH = array[6]
         self.SIMPLE_CONSTANTS_PATH = array[7]
         self.TESTPREV_PATH = array[8]
