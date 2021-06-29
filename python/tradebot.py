@@ -2,10 +2,10 @@ import sys
 import os
 import datetime
 import time
-import Trading
-from Logs import Logs
-from Parabolic import Parabolic
-from Simple import Simple
+import source.Trading as Trading
+from source.Logs import Logs
+from source.Parabolic import Parabolic
+from source.Simple import Simple
 
 #to add a new pattern module, modify Constants.Paths and paths.txt
 #the pattern class must include functions 

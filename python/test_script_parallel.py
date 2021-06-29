@@ -3,11 +3,11 @@ import os
 import time
 import math
 import multiprocessing as mp
-import Trading
-from PHP import PHP
-from Constants import Paths
-from Constants import Constants
-from Parabolic import Parabolic
+import source.Trading as Trading
+from source.PHP import PHP
+from source.Constants import Paths
+from source.Constants import Constants
+from source.Parabolic import Parabolic
 
 
 def runScan(asset, pattern, barsArray, reverseArray, SARArray, trendsArray, constants, dataLen):
@@ -108,9 +108,6 @@ def main():
         print("Starting with volume offset {}".format(volumeOffset))
         while volumeOffset <= maxOffsetV:
             volumeOffset += offsetChangeV
-            f = open(testprevPath, "w")
-            f.write(str(volumeOffset))
-            f.close()
             q = mp.Queue()
             jobs = []
             for partition in r:

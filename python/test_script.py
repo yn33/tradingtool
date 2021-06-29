@@ -1,10 +1,10 @@
 import sys
 import os
 import time
-import Trading
-from PHP import PHP
-from Constants import Paths
-from Parabolic import Parabolic
+import source.Trading as Trading
+from source.PHP import PHP
+from source.Constants import Paths
+from source.Parabolic import Parabolic
 
 
 def runScan(asset, pattern, barsArray, reverseArray, SARArray, trendsArray, constants, dataLen):

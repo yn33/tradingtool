@@ -1,6 +1,6 @@
 import sys
-from Constants import Paths
-from Constants import Constants
+from source.Constants import Paths
+from source.Constants import Constants
 
 best = [""] * 10
 bestValues = [-2000.0] * 10
