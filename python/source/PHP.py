@@ -20,7 +20,10 @@ class PHP:
         f.close()
 
         output = subprocess.run([self.paths.PHP_PATH, self.paths.KRAKEN_PATH, key, secret, str(asset.tag), str(asset.interval)], capture_output=True, text=True, check=True).stdout
-        array = json.loads(output)
+        if len(output.split(',')) < 20:
+            print("Error at getOHLC:")
+            raise Exception(output)
+        array = json.loads(output)    
         return array
     
     def enter(self, assetTag, stop, buyVolume):

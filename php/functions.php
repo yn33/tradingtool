@@ -4,8 +4,14 @@ function getOHLC($assetPair, $interval) {
 
     global $kraken;
     $res = $kraken->QueryPublic('OHLC', array('pair' => $assetPair, 'interval' => $interval));
-    $res1 = $res['result'][$assetPair];
-    fwrite(STDOUT, json_encode($res1));
+    $error = $res['error'];
+    $output = "";
+    if(count($error) > 0) {
+        $output = $error[0];
+    } else {
+        $output = $res['result'][$assetPair];
+    }
+    fwrite(STDOUT, json_encode($output));
 }
 
 function scan() {

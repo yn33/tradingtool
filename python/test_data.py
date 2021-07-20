@@ -76,7 +76,7 @@ for x in range(10):
     print(resString)
     if x == 0:
         paths = Paths("paths.txt")
-        constants = Constants(paths.PATTERN_CONSTANTS_PATH)
+        constants = Constants(paths.PARABOLIC_CONSTANTS_PATH)
         pivotlevel = constants.PIVOT_LEVEL
         stop = constants.STOP
         costhigh = constants.COST_HIGH

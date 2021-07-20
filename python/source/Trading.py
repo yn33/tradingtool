@@ -7,6 +7,7 @@ import datetime
 class Trader:
     php = PHP()
     assets = []
+    hold = []
     logs = Logs()
     paths = Paths("paths.txt")
     logs.setPaths(paths)
@@ -15,13 +16,14 @@ class Trader:
     def addAsset(self, asset):
         self.assets.append(asset)
 
-    def scan(self, pattern):
+    def scan(self, pattern, intervals):
         
         for asset in self.assets:
-            bars = Bars(self.php.getOHLC(asset))
-            scanResult = pattern.scan(asset, bars, Trade(asset, pattern))
-            if scanResult != None:
-                self.tryEnter(scanResult)
+            if asset.interval in intervals:
+                bars = Bars(self.php.getOHLC(asset))
+                scanResult = pattern.scan(asset, bars, Trade(asset, pattern))
+                if scanResult != None:
+                    self.tryEnter(scanResult)
     
     def tryEnter(self, trade):
         result = self.php.enter(trade.asset.tag, trade.stop, trade.buyVolume)
@@ -251,12 +253,12 @@ class Bars:
             SARs[i] = SAR
             if trend == 1:
                 if currHigh > EP:
-                    if acceleration < 0.2:
+                    if acceleration < maximum:
                         acceleration += 0.02
                     EP = currHigh
             if trend == 0:
                 if currLow < EP:
-                    if acceleration < 0.2:
+                    if acceleration < maximum:
                         acceleration += 0.02
                     EP = currLow
             nextSAR = SAR + acceleration*(EP - SAR)

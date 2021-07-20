@@ -51,6 +51,7 @@ def main():
     php.setPaths(paths)
     constantsPath = paths.TEST_CONSTANTS_PATH
     testsPath = sys.argv[1]
+    barDataPath = sys.argv[2]
     intervals = [15]
     pattern = Parabolic()
     cpucount = mp.cpu_count()
@@ -61,70 +62,100 @@ def main():
         
         asset = Trading.Asset(tag, interval, php, constantsPath)
         print("Initializing bar data...")
-        barData = php.getOHLC(asset)
+        barData = []
+        if barDataPath == "API":
+            barData = php.getOHLC(asset)
+        else:
+            barDataFile = open(barDataPath, 'r')
+            dataString = barDataFile.read()  
+            dataRows = dataString.split('\n')
+            for row in dataRows:
+                if row != '':
+                    rowSplit = row.split(',')
+                    barData.append(rowSplit)
+            barDataFile.close()
         dataLen = len(barData)
-        barsArray = []
-        reverseArray = []
-        SARArray = []
-        trendsArray = []
-        maxOffsetV = 5.0
-        offsetChangeV = 1.0
-        maxOffsetC = 7.0
-        offsetChangeC = 1.0
-        partitionSize = math.ceil((int(maxOffsetC/offsetChangeC + 1))/cpucount)
-        r = []
-        i = 0
-        while i < cpucount:
-            j = 0
-            partition = []
-            while j < partitionSize:
-                if (j + i*partitionSize)*offsetChangeC <= maxOffsetC:
-                    partition.append((j + i*partitionSize)*offsetChangeC)
-                j += 1
-            if len(partition) > 0:
-                r.append(partition)
-            i += 1
-        checkSum = 0
-        for x in r:
-            checkSum += len(x)
-        if checkSum != int(maxOffsetC/offsetChangeC + 1):
-            print("Partition error.")    
-            print(checkSum)
-            print(int(maxOffsetC/offsetChangeC + 1))
-            exit()
-        i = 2
-        while i < len(barData):
-            bars1 = Trading.Bars(barData[:i])
-            bars2 = Trading.Bars(barData[i:])
-            SARs, trends = bars1.parabolicSAR()
-            barsArray.append(bars1)
-            reverseArray.append(bars2)
-            SARArray.append(SARs)
-            trendsArray.append(trends)
-            i += 1
-        print("Initialized.")
-        print("Starting tests.")
-        volumeOffset = 0.0
-        print("Starting with volume offset {}".format(volumeOffset))
-        while volumeOffset <= maxOffsetV:
-            volumeOffset += offsetChangeV
-            q = mp.Queue()
-            jobs = []
-            for partition in r:
-                printStr = "Starting partition with volume offset {} and change offsets:".format(volumeOffset)
-                for x in partition:
-                    printStr = printStr + " {}".format(x)
-                print(printStr)
-                p = mp.Process(target=runPartition, args=(volumeOffset, partition, asset, pattern, interval, q, constantsPath, barsArray, reverseArray, SARArray, trendsArray, dataLen))
-                p.start()
-                jobs.append(p)
-            testf = open(testsPath, "a")
-            for job in jobs:
-                while job.is_alive():
-                    while not q.empty():
-                        testf.write(q.get())
-            testf.close()
-            print("All partitions finished for this volume offset, results written to file.")
+        print("Bar data loaded, size: {}".format(dataLen))
+
+        nRuns = 1
+        if dataLen > 1000:
+            nRuns = int(dataLen/1000)
+        
+        k = 0
+        while k < nRuns:
+            
+            print("Bars {}-{} of {}".format(k*1000, (k + 1)*1000, dataLen))
+            currBarData = []
+            if nRuns == 1:
+                currBarData = barData
+            else:
+                currBarData = barData[(dataLen-(k+1)*1000):(dataLen-k*1000)]
+            currDataLen = len(currBarData)
+            barsArray = []
+            reverseArray = []
+            SARArray = []
+            trendsArray = []
+            maxOffsetV = 5.0
+            offsetChangeV = 1.0
+            maxOffsetC = 7.0
+            offsetChangeC = 1.0
+            partitionSize = math.ceil((int(maxOffsetC/offsetChangeC + 1))/cpucount)
+            r = []
+            i = 0
+            while i < cpucount:
+                j = 0
+                partition = []
+                while j < partitionSize:
+                    if (j + i*partitionSize)*offsetChangeC <= maxOffsetC:
+                        partition.append((j + i*partitionSize)*offsetChangeC)
+                    j += 1
+                if len(partition) > 0:
+                    r.append(partition)
+                i += 1
+            checkSum = 0
+            for x in r:
+                checkSum += len(x)
+            if checkSum != int(maxOffsetC/offsetChangeC + 1):
+                print("Partition error.")    
+                print(checkSum)
+                print(int(maxOffsetC/offsetChangeC + 1))
+                exit()
+            i = 2
+            print("Creating data arrays...")
+            
+            while i < currDataLen:
+                bars1 = Trading.Bars(currBarData[:i])
+                bars2 = Trading.Bars(currBarData[i:])
+                SARs, trends = bars1.parabolicSAR()
+                barsArray.append(bars1)
+                reverseArray.append(bars2)
+                SARArray.append(SARs)
+                trendsArray.append(trends)
+                i += 1
+            print("Initialized.")
+            print("Starting tests.")
+            volumeOffset = 0.0
+            print("Starting with volume offset {}".format(volumeOffset))
+            while volumeOffset <= maxOffsetV:
+                volumeOffset += offsetChangeV
+                q = mp.Queue()
+                jobs = []
+                for partition in r:
+                    printStr = "Starting partition with volume offset {} and change offsets:".format(volumeOffset)
+                    for x in partition:
+                        printStr = printStr + " {}".format(x)
+                    print(printStr)
+                    p = mp.Process(target=runPartition, args=(volumeOffset, partition, asset, pattern, interval, q, constantsPath, barsArray, reverseArray, SARArray, trendsArray, currDataLen))
+                    p.start()
+                    jobs.append(p)
+                testf = open(testsPath, "a")
+                for job in jobs:
+                    while job.is_alive():
+                        while not q.empty():
+                            testf.write(q.get())
+                testf.close()
+                print("All partitions finished for this volume offset, results written to file.")
+    k += 1
 
 def runPartition(volumeOffset, partition, asset, pattern, interval, q, constantsPath, barsArray, reverseArray, SARArray, trendsArray, dataLen):
     for x in partition:
