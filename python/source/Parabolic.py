@@ -81,10 +81,10 @@ class Parabolic:
                             print("Stop: {}\n".format(trade.stop))
                             print("Cost: {}".format(cost))
                             return trade
-                    else:
-                        print("Cost was not within limits.")
-                        print("Cost: {}".format(cost))
-                        print("Risk: {}".format(trade.risk))
+                        else:
+                            print("Cost was not within limits.")
+                            print("Cost: {}".format(cost))
+                            print("Risk: {}".format(trade.risk))
                     attempt += 1
         return None
 
